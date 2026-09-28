@@ -1,0 +1,10 @@
+base_url: "http://localhost:11434"
+chat_path: "/api/chat"
+auth_style: "none"
+env_var: null
+request_extractor: "ollama_chat"
+response_paths:
+  reply_text: "message.content"
+  input_tokens: "prompt_eval_count"
+  output_tokens: "eval_count"
+  total_tokens: null

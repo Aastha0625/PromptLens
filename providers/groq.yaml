@@ -1,0 +1,10 @@
+base_url: "https://api.groq.com"
+chat_path: "/openai/v1/chat/completions"
+auth_style: "bearer"
+env_var: "GROQ_API_KEY"
+request_extractor: "openai_messages"
+response_paths:
+  reply_text: "choices.0.message.content"
+  input_tokens: "usage.prompt_tokens"
+  output_tokens: "usage.completion_tokens"
+  total_tokens: "usage.total_tokens"

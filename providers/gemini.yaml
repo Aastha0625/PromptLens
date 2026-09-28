@@ -1,0 +1,11 @@
+base_url: "https://generativelanguage.googleapis.com"
+chat_path: "/v1beta/models/{model}:generateContent"
+default_model: "gemini-1.5-pro-latest"
+auth_style: "query"
+env_var: "GEMINI_API_KEY"
+request_extractor: "gemini_contents"
+response_paths:
+  reply_text: "candidates.0.content.parts.0.text"
+  input_tokens: "usageMetadata.promptTokenCount"
+  output_tokens: "usageMetadata.candidatesTokenCount"
+  total_tokens: "usageMetadata.totalTokenCount"

@@ -1,0 +1,16 @@
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYIG",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello! How can I help you today?"
+    }
+  ],
+  "model": "claude-3-opus-20240229",
+  "usage": {
+    "input_tokens": 15,
+    "output_tokens": 9
+  }
+}
