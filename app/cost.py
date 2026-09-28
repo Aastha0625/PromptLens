@@ -15,11 +15,13 @@ def load_pricing():
 
 load_pricing()
 
+from .provider_config import providers
+
 def calculate_cost(provider: str, model: str, input_tokens: Optional[int], output_tokens: Optional[int]) -> Optional[float]:
     if input_tokens is None or output_tokens is None:
         return None
         
-    if provider == "ollama":
+    if provider == "ollama" or (provider in providers and providers[provider].is_free_tier):
         return 0.0
         
     if not model or model not in pricing_data:

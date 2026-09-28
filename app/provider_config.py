@@ -18,6 +18,7 @@ class ProviderConfig(BaseModel):
     extra_headers: Optional[Dict[str, str]] = None
     request_extractor: str
     response_paths: ProviderResponsePaths
+    is_free_tier: bool = False
 
 providers: Dict[str, ProviderConfig] = {}
 
