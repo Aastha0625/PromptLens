@@ -1,5 +1,6 @@
 base_url: "https://api.groq.com"
 chat_path: "/openai/v1/chat/completions"
+default_model: "openai/gpt-oss-20b"
 auth_style: "bearer"
 env_var: "GROQ_API_KEY"
 request_extractor: "openai_messages"

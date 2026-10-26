@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from .database import SessionLocal
 from . import stats
-from .models import RequestLog, PromptFlag, PromptAnalysis
+from .models import RequestLog, PromptFlag, PromptAnalysis, Suggestion, OptimizerUsage
 from .schemas import (
     StatsSummary,
     TimelineBucket,
@@ -17,8 +17,12 @@ from .schemas import (
     FlagItem,
     FlagList,
     FlagSummary,
+    SuggestionItem,
+    SuggestionList,
+    SuggestionsSummary,
 )
 from .analysis_service import run_analysis
+from .suggestion_service import get_or_create_suggestion
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -193,3 +197,107 @@ def get_flags_summary(db: Session = Depends(get_db)):
         by_severity=by_severity,
         total_estimated_wasted_tokens=total_wasted,
     )
+
+# ==================== Phase 5 Suggestion Endpoints ====================
+
+@router.post("/suggest/{flag_id}", response_model=SuggestionItem)
+def generate_suggestion(
+    flag_id: int,
+    regenerate: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    """
+    Generates or fetches a prompt rewrite suggestion for the given flag_id.
+    - Tier 1 (redundant/repeated): Rule-based deterministic rewrite.
+    - Tier 2 (verbose): LLM rewrite with semantic verification (behind ENABLE_LLM_REWRITE).
+    Idempotent: Returns existing suggestion if already 'ok' or 'not_verified_safe'.
+    """
+    suggestion = get_or_create_suggestion(db, flag_id=flag_id, regenerate=regenerate)
+    if not suggestion:
+        raise HTTPException(status_code=404, detail="Prompt flag not found")
+    return suggestion
+
+@router.get("/suggestions", response_model=SuggestionList)
+def get_suggestions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    method: Optional[str] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Returns paginated list of suggestions ordered newest first.
+    """
+    if method and method not in ["rule_based", "llm_rewrite"]:
+        raise HTTPException(status_code=422, detail="method must be 'rule_based' or 'llm_rewrite'")
+
+    valid_statuses = ["ok", "not_verified_safe", "disabled", "failed", "no_change"]
+    if status and status not in valid_statuses:
+        raise HTTPException(status_code=422, detail=f"status must be one of {valid_statuses}")
+
+    query = db.query(Suggestion)
+    if method:
+        query = query.filter(Suggestion.method == method)
+    if status:
+        query = query.filter(Suggestion.status == status)
+
+    total = query.count()
+    items = query.order_by(Suggestion.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return SuggestionList(items=items, page=page, page_size=page_size, total=total)
+
+@router.get("/suggestions/summary", response_model=SuggestionsSummary)
+def get_suggestions_summary(db: Session = Depends(get_db)):
+    """
+    Returns aggregate summary of suggestions: counts by method/status,
+    separate rule-based and verified LLM savings, and total optimizer runtime cost.
+    """
+    total_suggestions = db.query(func.count(Suggestion.id)).scalar() or 0
+
+    # Counts by method
+    method_rows = db.query(Suggestion.method, func.count(Suggestion.id)).group_by(Suggestion.method).all()
+    by_method = {row[0]: row[1] for row in method_rows}
+
+    # Counts by status
+    status_rows = db.query(Suggestion.status, func.count(Suggestion.id)).group_by(Suggestion.status).all()
+    by_status = {row[0]: row[1] for row in status_rows}
+
+    # Verified counts for LLM rewrites
+    verified_count = db.query(func.count(Suggestion.id)).filter(
+        Suggestion.method == "llm_rewrite",
+        Suggestion.status == "ok",
+    ).scalar() or 0
+
+    not_verified_safe_count = db.query(func.count(Suggestion.id)).filter(
+        Suggestion.method == "llm_rewrite",
+        Suggestion.status == "not_verified_safe",
+    ).scalar() or 0
+
+    # Savings: count savings only from usable suggestions (Change 5)
+    rule_based_savings = db.query(func.sum(Suggestion.estimated_token_savings)).filter(
+        Suggestion.method == "rule_based",
+        Suggestion.status == "ok",
+    ).scalar() or 0
+
+    verified_llm_savings = db.query(func.sum(Suggestion.estimated_token_savings)).filter(
+        Suggestion.method == "llm_rewrite",
+        Suggestion.status == "ok",
+    ).scalar() or 0
+
+    total_savings = rule_based_savings + verified_llm_savings
+
+    # Optimizer total cost (overhead tracking)
+    optimizer_total_cost_usd = db.query(func.sum(OptimizerUsage.cost_usd)).scalar() or 0.0
+
+    return SuggestionsSummary(
+        total_suggestions=total_suggestions,
+        by_method=by_method,
+        by_status=by_status,
+        verified_count=verified_count,
+        not_verified_safe_count=not_verified_safe_count,
+        rule_based_savings=int(rule_based_savings),
+        verified_llm_savings=int(verified_llm_savings),
+        total_estimated_token_savings=int(total_savings),
+        optimizer_total_cost_usd=round(float(optimizer_total_cost_usd), 4),
+    )
+

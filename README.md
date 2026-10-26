@@ -1,6 +1,6 @@
 # PromptLens - The API Auditor
 
-PromptLens is an API Auditor proxy and prompt intelligence tool that sits between your application and LLM providers. It captures token usage, calculates costs, provides interactive usage analytics, and audits prompts offline for waste and redundancy.
+PromptLens is an API Auditor proxy and prompt intelligence tool that sits between your application and LLM providers. It captures token usage, calculates costs, provides interactive usage analytics, audits prompts offline for waste and redundancy, and generates verifiable prompt shortening suggestions.
 
 ---
 
@@ -28,6 +28,12 @@ PromptLens is an API Auditor proxy and prompt intelligence tool that sits betwee
    - Fully idempotent: re-runs safely replace old flags per request.
    - Lazy model loading: falls back gracefully without crashing if `sentence-transformers` is absent.
 
+5. **Suggestion Engine - Rewrite & Verification (Phase 5):**
+   - **Tier 1 (Rule-Based, zero LLM calls):** Deterministically removes duplicate sentences using analyzer spans and collapses whitespace/word runs outside fenced code blocks.
+   - **Tier 2 (LLM-Based, verbose template outliers):** Feature-flagged behind `ENABLE_LLM_REWRITE`. Uses a separate optimizer key and model so user proxy quotas are never touched.
+   - **Semantic Verification:** Reuses `all-MiniLM-L6-v2` to verify semantic preservation between the stored original reply and the new reply from the rewrite (cosine similarity $\ge 0.85 \implies$ `status="ok"`).
+   - **Tool Overhead Transparency:** Logs internal rewrite/verify API usage to `optimizer_usage` to show exact tool runtime cost.
+
 ---
 
 ## Setup & Execution
@@ -49,9 +55,6 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-> **Note on Semantic Analysis:**
-> `sentence-transformers` and `torch` are optional for basic heuristics. If installed, the first run will download `all-MiniLM-L6-v2` (~90MB). If omitted, PromptLens continues running all non-semantic checks (exact duplicates, repeated whitespace/words, and verbose template grouping) without interruption.
-
 ### 2. Frontend Setup
 
 ```bash
@@ -64,38 +67,57 @@ Dashboard runs at `http://localhost:5173`.
 
 ---
 
-## Running the Prompt Analyzer
+## Configuring the Optimizer (Phase 5 Tier 2)
 
-Run the analyzer via the command line:
+By default, Tier 2 LLM rewriting is disabled (`ENABLE_LLM_REWRITE=False`). To enable it with a dedicated key:
+
+1. Add the optimizer configuration to your `.env` file:
+   ```env
+   ENABLE_LLM_REWRITE=true
+   OPTIMIZER_PROVIDER=groq
+   OPTIMIZER_MODEL=llama-3.1-8b-instant
+   OPTIMIZER_API_KEY=your_optimizer_key_here
+   ```
+2. When enabled, requesting suggestions for `verbose_for_template` flags will execute Tier 2 shortening and verify reply consistency without spending your proxy application quota.
+
+---
+
+## Running the Suggestion Engine
+
+Run the batch suggestion generator via the CLI:
 
 ```bash
-# Analyze unanalyzed requests
-python scripts/run_analyzer.py --limit 100
+# Generate suggestions for un-suggested flags
+python scripts/run_suggestions.py --limit 20
 
-# Force re-analysis of already analyzed requests
-python scripts/run_analyzer.py --limit 100 --reanalyze
+# Force re-generation of existing suggestions
+python scripts/run_suggestions.py --limit 20 --regenerate
 ```
 
-Or trigger it via the REST API:
+Or call the Suggestion REST endpoints:
+
 ```bash
-# Trigger analysis
-curl -X POST "http://localhost:8000/api/analyze?limit=100&reanalyze=true"
+# 1. Generate or fetch suggestion for a specific flag
+curl -X POST "http://localhost:8000/api/suggest/1"
 
-# View flagged prompts
-curl "http://localhost:8000/api/flags?page=1&page_size=20"
+# 2. Force re-generation for a flag
+curl -X POST "http://localhost:8000/api/suggest/1?regenerate=true"
 
-# View aggregate summary and estimated wasted tokens
-curl "http://localhost:8000/api/flags/summary"
+# 3. List paginated suggestions (filter by method or status)
+curl "http://localhost:8000/api/suggestions?page=1&page_size=20&status=ok"
+
+# 4. View aggregate suggestion summary, separate savings, and optimizer overhead cost
+curl "http://localhost:8000/api/suggestions/summary"
 ```
 
 ---
 
 ## Testing
 
-PromptLens has a comprehensive test suite covering adapters, cost math, API endpoints, and analyzer heuristics:
+PromptLens has a comprehensive test suite across all 5 phases:
 
 ```bash
 pytest -v
 ```
 
-All analyzer unit tests run offline using `FakeEmbedder` so tests are fast, deterministic, and require zero internet.
+All tests run completely offline without external network calls using `FakeEmbedder` and `FakeOptimizerClient`.

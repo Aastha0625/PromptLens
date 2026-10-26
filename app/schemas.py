@@ -106,3 +106,40 @@ class FlagSummary(BaseModel):
     by_type: Dict[str, int]
     by_severity: Dict[str, int]
     total_estimated_wasted_tokens: int
+
+# ==================== Phase 5 Suggestion Schemas ====================
+
+class SuggestionItem(BaseModel):
+    id: int
+    flag_id: int
+    request_id: int
+    method: str
+    original_prompt_excerpt: str
+    rewritten_prompt: Optional[str] = None
+    message: Optional[str] = None
+    estimated_token_savings: int
+    status: str
+    similarity_score: Optional[float] = None
+    optimizer_provider: Optional[str] = None
+    optimizer_model: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class SuggestionList(BaseModel):
+    items: List[SuggestionItem]
+    page: int
+    page_size: int
+    total: int
+
+class SuggestionsSummary(BaseModel):
+    total_suggestions: int
+    by_method: Dict[str, int]
+    by_status: Dict[str, int]
+    verified_count: int
+    not_verified_safe_count: int
+    rule_based_savings: int
+    verified_llm_savings: int
+    total_estimated_token_savings: int
+    optimizer_total_cost_usd: float
+

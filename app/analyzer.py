@@ -40,17 +40,30 @@ def extract_template_key(prompt_text: str) -> str:
     words = cleaned.lower().split()
     return " ".join(words[:5])
 
+def split_sentences_with_spans(text: str) -> List[Tuple[int, int, str]]:
+    """
+    Splits text into sentences based on punctuation (. ! ?) and newlines.
+    Returns character offsets (start, end, stripped_sentence) in text.
+    """
+    if not text:
+        return []
+    spans = []
+    for m in re.finditer(r'[^.!?\n]+', text):
+        raw_chunk = m.group()
+        stripped = raw_chunk.strip()
+        if stripped:
+            lead_ws = len(raw_chunk) - len(raw_chunk.lstrip())
+            start = m.start() + lead_ws
+            end = start + len(stripped)
+            spans.append((start, end, stripped))
+    return spans
+
 def split_sentences(text: str) -> List[str]:
     """
     Splits text into sentences based on punctuation (. ! ?) and newlines.
     Filters out empty or whitespace-only chunks.
     """
-    if not text:
-        return []
-    # Split on periods, exclamation marks, question marks, and newlines
-    raw_chunks = re.split(r'[.!?\n]+', text)
-    sentences = [chunk.strip() for chunk in raw_chunks if chunk and chunk.strip()]
-    return sentences
+    return [s for _, _, s in split_sentences_with_spans(text)]
 
 def count_words(sentence: str) -> int:
     """Counts words in a sentence by splitting on whitespace."""
