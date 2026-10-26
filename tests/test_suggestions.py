@@ -351,3 +351,13 @@ def test_api_suggestions_and_summary(client, db_session):
     # 5. Error validation: 422 on invalid method
     r_422 = client.get("/api/suggestions?method=invalid_method")
     assert r_422.status_code == 422
+
+    # 6. Phase 6: flag_id filter and 422 on non-integer
+    r_flag = client.get(f"/api/suggestions?flag_id={flag.id}")
+    assert r_flag.status_code == 200
+    flag_res = r_flag.json()
+    assert flag_res["total"] == 1
+    assert flag_res["items"][0]["flag_id"] == flag.id
+
+    r_flag_invalid = client.get("/api/suggestions?flag_id=invalid_id")
+    assert r_flag_invalid.status_code == 422

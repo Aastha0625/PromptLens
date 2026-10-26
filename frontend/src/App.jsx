@@ -4,6 +4,7 @@ import SummaryCards from './components/SummaryCards';
 import UsageChart from './components/UsageChart';
 import RequestsTable from './components/RequestsTable';
 import RequestDetail from './components/RequestDetail';
+import InsightsTab from './components/InsightsTab';
 import { fetchSummary, fetchTimeline, fetchRequests } from './api';
 import './App.css';
 
@@ -27,6 +28,12 @@ function getDatesForPreset(preset) {
 }
 
 export default function App() {
+  // Navigation Tabs State (Change 3)
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'insights'
+  const [hasMountedOverview, setHasMountedOverview] = useState(true);
+  const [hasMountedInsights, setHasMountedInsights] = useState(false);
+
+  // Overview Filters & State (Preserved across tab switches)
   const [provider, setProvider] = useState('all');
   const [preset, setPreset] = useState('Last 14 days');
   const [bucket, setBucket] = useState('day');
@@ -39,6 +46,15 @@ export default function App() {
   const [summary, setSummary] = useState({ data: null, loading: true, error: null });
   const [timeline, setTimeline] = useState({ data: null, loading: true, error: null });
   const [requests, setRequests] = useState({ data: null, loading: true, error: null });
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'insights') {
+      setHasMountedInsights(true);
+    } else if (tab === 'overview') {
+      setHasMountedOverview(true);
+    }
+  };
 
   const handlePresetChange = (newPreset) => {
     setPreset(newPreset);
@@ -112,58 +128,92 @@ export default function App() {
   }, [provider, dateRange, statusFilter, page]);
 
   useEffect(() => {
+    if (!hasMountedOverview) return;
     const controller = fetchDashboardData();
     return () => controller.abort();
-  }, [fetchDashboardData]);
+  }, [hasMountedOverview, fetchDashboardData]);
 
   useEffect(() => {
+    if (!hasMountedOverview) return;
     const controller = fetchTableData();
     return () => controller.abort();
-  }, [fetchTableData]);
+  }, [hasMountedOverview, fetchTableData]);
 
   const hasGlobalError = summary.error || timeline.error || requests.error;
 
   return (
     <div className="app">
       <header>
-        <h1>PromptLens <span className="subtitle">the API Auditor</span></h1>
+        <div className="header-top">
+          <h1>PromptLens <span className="subtitle">the API Auditor</span></h1>
+        </div>
+
+        {/* Tab Navigation (Change 3) */}
+        <nav className="tab-navigation">
+          <button 
+            type="button"
+            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('overview')}
+          >
+            Overview
+          </button>
+          <button 
+            type="button"
+            className={`tab-btn ${activeTab === 'insights' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('insights')}
+          >
+            Prompt Insights
+          </button>
+        </nav>
       </header>
 
       <main>
-        <FilterBar 
-          provider={provider} setProvider={handleProviderChange}
-          preset={preset} setPreset={handlePresetChange}
-          bucket={bucket} setBucket={setBucket}
-        />
+        {/* OVERVIEW TAB (Kept mounted, hidden via CSS when inactive) */}
+        {hasMountedOverview && (
+          <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
+            <FilterBar 
+              provider={provider} setProvider={handleProviderChange}
+              preset={preset} setPreset={handlePresetChange}
+              bucket={bucket} setBucket={setBucket}
+            />
 
-        {hasGlobalError && (
-          <div className="global-error state-box">
-            <p>Error communicating with API. Make sure the backend is running.</p>
-            <button onClick={() => {
-              fetchDashboardData();
-              fetchTableData();
-            }}>Retry</button>
+            {hasGlobalError && (
+              <div className="global-error state-box">
+                <p>Error communicating with API. Make sure the backend is running.</p>
+                <button type="button" onClick={() => {
+                  fetchDashboardData();
+                  fetchTableData();
+                }}>Retry</button>
+              </div>
+            )}
+
+            <SummaryCards data={summary.data} loading={summary.loading} />
+            
+            <UsageChart data={timeline.data} loading={timeline.loading} bucket={bucket} />
+
+            <RequestsTable 
+              data={requests.data} 
+              loading={requests.loading} 
+              page={page} 
+              setPage={setPage}
+              statusFilter={statusFilter}
+              setStatusFilter={handleStatusChange}
+              onRowClick={setSelectedId}
+            />
+
+            {selectedId && (
+              <RequestDetail id={selectedId} onClose={() => setSelectedId(null)} />
+            )}
           </div>
         )}
 
-        <SummaryCards data={summary.data} loading={summary.loading} />
-        
-        <UsageChart data={timeline.data} loading={timeline.loading} bucket={bucket} />
-
-        <RequestsTable 
-          data={requests.data} 
-          loading={requests.loading} 
-          page={page} 
-          setPage={setPage}
-          statusFilter={statusFilter}
-          setStatusFilter={handleStatusChange}
-          onRowClick={setSelectedId}
-        />
+        {/* PROMPT INSIGHTS TAB (Mounted on first open, kept mounted, hidden via CSS when inactive) */}
+        {hasMountedInsights && (
+          <div style={{ display: activeTab === 'insights' ? 'block' : 'none' }}>
+            <InsightsTab />
+          </div>
+        )}
       </main>
-
-      {selectedId && (
-        <RequestDetail id={selectedId} onClose={() => setSelectedId(null)} />
-      )}
     </div>
   );
 }

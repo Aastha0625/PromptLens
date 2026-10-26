@@ -223,6 +223,7 @@ def get_suggestions(
     page_size: int = Query(20, ge=1, le=100),
     method: Optional[str] = None,
     status: Optional[str] = None,
+    flag_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -240,6 +241,8 @@ def get_suggestions(
         query = query.filter(Suggestion.method == method)
     if status:
         query = query.filter(Suggestion.status == status)
+    if flag_id is not None:
+        query = query.filter(Suggestion.flag_id == flag_id)
 
     total = query.count()
     items = query.order_by(Suggestion.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
