@@ -15,6 +15,10 @@ if settings.DATABASE_URL.startswith("sqlite"):
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
+        
+        # Register custom function for SQL grouping
+        from .analyzer import extract_template_key
+        dbapi_connection.create_function("template_key", 1, extract_template_key)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

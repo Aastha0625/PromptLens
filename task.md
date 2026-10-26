@@ -1,0 +1,11 @@
+- [x] Update `app/database.py` to register SQLite custom function for `template_key` to allow SQL grouping.
+- [x] Implement `app/analyzer_config.py` with all constants and severity bands.
+- [x] Modify `app/models.py` with `PromptFlag` and `PromptAnalysis`.
+- [x] Implement `app/schemas.py` for API schemas.
+- [x] Implement `app/embedder.py` with lazy loading and fake interface.
+- [x] Implement `app/analyzer.py` for exact duplicates, semantic duplicates, repeated content. Role prefix stripped per line.
+- [x] Implement `app/analysis_service.py` to handle batching, per-request deletion of old flags, and global verbose SQL grouping.
+- [x] Add endpoints to `app/api.py`.
+- [x] Create `scripts/run_analyzer.py`.
+- [x] Write `tests/test_analyzer.py` with FakeEmbedder, exactly 2 vs exactly 3 group tests, and marked slow real embedder test.
+- [x] Update `requirements.txt` and `README.md`.

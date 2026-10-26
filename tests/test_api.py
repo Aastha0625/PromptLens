@@ -82,3 +82,42 @@ def test_requests_list(client, db_session):
 def test_404(client):
     r = client.get("/api/requests/999")
     assert r.status_code == 404
+
+def test_api_analyze_and_flags(client, db_session):
+    dt = datetime(2024, 1, 1, 12, 0, 0)
+    # Add a request with repeated words and redundant sentences
+    db_session.add(RequestLog(
+        provider="groq", model="llama3", input_tokens=40, output_tokens=10,
+        total_tokens=50, cost_usd=0.0, latency_ms=100, status_code=200, created_at=dt,
+        prompt_text="user: Hello world! This is a test sentence for duplicate check. This is a test sentence for duplicate check. Test test test test."
+    ))
+    db_session.commit()
+
+    # Trigger analyze
+    r = client.post("/api/analyze?reanalyze=true")
+    assert r.status_code == 200
+    res = r.json()
+    assert res["requests_analyzed"] == 1
+    assert res["requests_flagged"] == 1
+    assert res["flags_created"] >= 1
+
+    # Get flags
+    r_flags = client.get("/api/flags")
+    assert r_flags.status_code == 200
+    flags_data = r_flags.json()
+    assert flags_data["total"] >= 1
+    assert len(flags_data["items"]) >= 1
+    item = flags_data["items"][0]
+    assert item["provider"] == "groq"
+    assert item["model"] == "llama3"
+    assert "prompt_preview" in item
+
+    # Get flags summary
+    r_summary = client.get("/api/flags/summary")
+    assert r_summary.status_code == 200
+    sum_data = r_summary.json()
+    assert sum_data["analyzed_requests"] == 1
+    assert sum_data["flagged_requests"] == 1
+    assert sum_data["total_flags"] >= 1
+    assert sum_data["total_estimated_wasted_tokens"] > 0
+

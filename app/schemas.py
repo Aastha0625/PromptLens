@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class NormalizedLog(BaseModel):
@@ -71,3 +71,38 @@ class RequestDetail(BaseModel):
     is_demo: bool
     
     model_config = {"from_attributes": True}
+
+class AnalyzeResponse(BaseModel):
+    requests_analyzed: int
+    requests_flagged: int
+    flags_created: int
+    semantic_check_ran: bool
+    duration_ms: float
+
+class FlagItem(BaseModel):
+    id: int
+    request_id: int
+    flag_type: str
+    severity: str
+    detail: str
+    created_at: datetime
+    provider: str
+    model: str
+    input_tokens: Optional[int] = None
+    prompt_preview: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+class FlagList(BaseModel):
+    items: List[FlagItem]
+    page: int
+    page_size: int
+    total: int
+
+class FlagSummary(BaseModel):
+    analyzed_requests: int
+    flagged_requests: int
+    total_flags: int
+    by_type: Dict[str, int]
+    by_severity: Dict[str, int]
+    total_estimated_wasted_tokens: int

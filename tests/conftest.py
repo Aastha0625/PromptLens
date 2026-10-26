@@ -8,12 +8,20 @@ from app.main import app
 from app.database import Base
 from app.api import get_db
 
+from sqlalchemy import create_engine, event
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+@event.listens_for(engine, "connect")
+def register_custom_functions(dbapi_connection, connection_record):
+    from app.analyzer import extract_template_key
+    dbapi_connection.create_function("template_key", 1, extract_template_key)
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
