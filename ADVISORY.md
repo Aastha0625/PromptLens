@@ -1,194 +1,135 @@
 # PromptLens: Project Advisory & Team Execution Guide
+## Core Mission: Real-Time Prompt Efficiency & Intelligent Prompt Optimizer
 
 > **Audience:** Core Project Team (Akshat, Hitakshi)  
-> **Project Title:** PromptLens — The LLM API Auditor & Prompt Intelligence Suite  
+> **Project Title:** PromptLens — The Real-Time LLM Prompt Auditor & Optimizer Studio  
 > **Repository Root:** `E:\Major project`  
+> **Cost Guarantee:** **$0.00 Required** (Fully operational on Groq Free Tier, Ollama, and local CPU heuristics).
 
 ---
 
-## 1. Project Overview & Complete Architecture Workflow
+## 1. Project Overview & Updated Core Workflow
 
-PromptLens is an enterprise-grade LLM proxy, auditor, and prompt optimization intelligence tool. It intercepts API traffic between client applications and major LLM providers to track costs, monitor latencies, detect token waste offline, and safely suggest optimized prompt rewrites.
+PromptLens is not just an API traffic logger; **its primary USP is making AI prompts lean, efficient, and cost-effective**. It audits incoming prompts for waste, removes bloat, calculates exact token savings, and provides an interactive "Prompt Studio" where developers can test and optimize prompts before sending them to AI models.
 
-### System Architecture Workflow
+### End-to-End System Architecture
 
 ```mermaid
 flowchart TD
-    Client["Client Application / Postman / cURL"] -->|POST /proxy/{provider}| Proxy["PromptLens Reverse Proxy (FastAPI)"]
-    
-    subgraph ProxyLayer ["Proxy & Adapter Layer (Phase 1)"]
-        Proxy --> Adapter["Provider Adapter (YAML Configs)"]
-        Adapter --> Upstream["Upstream LLM (OpenAI / Anthropic / Gemini / Groq / Ollama)"]
-        Upstream -->|Response Payload| Proxy
-        Proxy -->|Log Request, Reply, Tokens, Cost, Latency| DB[("SQLite DB (promptlens.db)")]
-        Proxy -->|Normalized Response JSON| Client
+    subgraph InputChannels ["Input Channels"]
+        App["App via Proxy (POST /proxy/{provider})"]
+        Dev["Developer via Web Dashboard (Prompt Studio)"]
     end
 
-    subgraph AnalyticsLayer ["Analytics & Reporting API (Phase 2)"]
-        DB --> StatsAPI["API Stats Router (/api/stats/summary, /api/stats/timeline, /api/requests)"]
+    subgraph RealTimeOptimization ["PromptLens Optimization Engine"]
+        InputChannels --> Ingest{"Routing Path"}
+        
+        Ingest -->|"Direct Optimization"| PreFlight["POST /api/audit-prompt"]
+        Ingest -->|"Proxy with Auto-Shorten Header"| Intercept["Clean & Shorten BEFORE sending Upstream"]
+        Ingest -->|"Standard Proxy"| PassThrough["Forward Upstream + Auto-Audit in Background"]
+        
+        PreFlight --> Cleaners
+        Intercept --> Cleaners
+        PassThrough --> Cleaners
+
+        subgraph Cleaners ["Multi-Tier Prompt Optimization"]
+            T1["Tier 1A: Conversational Fluff Stripper (Politeness, greeting filler)"]
+            T1B["Tier 1B: Redundant Sentence & Formatting De-duplicator"]
+            T2["Tier 2: AI Optimizer Rewrite (Groq Free Tier / Ollama)"]
+            Verify["Semantic Cosine Verification (all-MiniLM-L6-v2 >= 0.85)"]
+        end
     end
 
-    subgraph IntelligenceLayer ["Prompt Intelligence Engine (Phases 4 & 5)"]
-        DB --> Analyzer["Batch Prompt Analyzer (/api/analyze)"]
-        Analyzer --> Flags["Prompt Flags Table (redundant_sentences, repeated_content, verbose_for_template)"]
-        Flags --> SuggestionEngine["Suggestion Engine (/api/suggest/{flag_id})"]
-        SuggestionEngine --> Tier1["Tier 1: Rule-Based Deterministic Shortening (0 cost)"]
-        SuggestionEngine --> Tier2["Tier 2: LLM Rewrite (Optimizer Model) + Semantic Verification (Cosine Sim >= 0.85)"]
-        Tier2 --> OptimizerLog["Optimizer Usage Tracking (Cost transparency)"]
-    end
-
-    subgraph DashboardLayer ["Dashboard UI (Phases 3 & 6)"]
-        StatsAPI --> UI["React 18 + Vite SPA"]
-        Flags --> UI
-        SuggestionEngine --> UI
-        UI --> Tab1["Tab 1: Overview (Live Stats, Recharts Timeline, Request Logs)"]
-        UI --> Tab2["Tab 2: Prompt Insights (Audit Cards, Flags Table, Side-by-Side Prompt Diff, Copy)"]
+    subgraph StorageAndUI ["Audit Logging & User Dashboard"]
+        Cleaners --> DB[("SQLite DB (promptlens.db)")]
+        DB --> UI["React 18 + Vite Dashboard"]
+        
+        UI --> Tab1["Tab 1: Overview (Traffic, spend, and requests)"]
+        UI --> Tab2["Tab 2: Prompt Insights (Audit history, flags table, savings)"]
+        UI --> Tab3["Tab 3: Prompt Studio (Interactive real-time prompt optimizer & diff)"]
     end
 ```
 
 ---
 
-## 2. What Is Completed & Working (Phases 1 – 6)
+## 2. Cost & Free AI Strategy ($0.00 Out-of-Pocket)
 
-1. **Phase 1: Reverse Proxy & Multi-Provider Adapters**
-   - Declarative YAML adapters in [`providers/`](file:///E:/Major%20project/providers/) for OpenAI, Anthropic, Gemini, Groq, and Ollama.
-   - Non-blocking asynchronous logging using FastAPI `BackgroundTasks`.
-   - Exact token & cost accounting using [`pricing.yaml`](file:///E:/Major%20project/pricing.yaml) with student free-tier support.
-2. **Phase 2: Analytics & Read API**
-   - SQLite WAL mode database (`promptlens.db`).
-   - Time-bucketed statistics (`/api/stats/summary`), zero-filled timeline aggregation (`/api/stats/timeline`), and paginated request drill-down (`/api/requests`).
-3. **Phase 3: Overview Dashboard UI**
-   - Single-page React 18 + Vite frontend with Recharts, plain CSS, native `fetch()`, and `AbortController` cancellation.
-   - Filter bar with date presets (`Last 24h`, `Last 7d`, `Last 14d`, `All`), provider selection, and status filters.
-4. **Phase 4: Prompt Analyzer Engine**
-   - Offline batch prompt waste scanner (`POST /api/analyze`).
-   - Detects:
-     - `redundant_sentences`: Exact string matching and semantic cosine similarity ($\ge 0.90$).
-     - `repeated_content`: Blank line spam, excessive spaces, and repeating n-grams outside code blocks.
-     - `verbose_for_template`: SQL `GROUP BY` template outlier detection ($\ge 3\times$ baseline token usage).
-   - Idempotent re-runs safely replace old flags per request.
-5. **Phase 5: Suggestion Engine**
-   - `POST /api/suggest/{flag_id}` generates prompt shortening suggestions:
-     - **Tier 1 (Rule-Based)**: Deterministic, instant cleanup of exact duplicates and whitespace runs (0 LLM cost).
-     - **Tier 2 (LLM Rewrite)**: Feature-flagged optimizer model (e.g. Groq `openai/gpt-oss-20b`) for verbose templates.
-   - Guardrails: Preflight checks, length reduction validation, and embedding similarity verification against baseline replies.
-   - Optimizer overhead tracking: Logs PromptLens's self-usage to `optimizer_usage` to disclose runtime overhead.
-6. **Phase 6: Prompt Insights Dashboard UI**
-   - Seamless top tab navigation (`Overview` vs. `Prompt Insights`) maintaining filter and scroll states.
-   - Summary cards displaying flagged requests, total flags by severity, estimated wasted tokens, usable suggestions, rule-based vs. verified LLM savings, and tool runtime overhead.
-   - "Run analysis" action with interactive loading states, first-run model download notes, and completion banners.
-   - Flags table with severity badges, filters, pagination, and detail modal.
-   - Side-by-side prompt viewer (original vs. rewritten), plain-English explanations, honest status badges, and one-click clipboard copy.
+The team does **not** need a paid AI account to build, test, and demonstrate this project:
+1. **Local Heuristics (0 cost)**:
+   - Duplicate sentences, repeated whitespace, and conversational filler stripping run as fast pure-Python regex and string algorithms on your CPU.
+2. **Local Semantic Verification (0 cost)**:
+   - Sentence embedding comparisons (`all-MiniLM-L6-v2`) run locally via `sentence-transformers` on your CPU.
+3. **LLM Prompt Rewriter (0 cost)**:
+   - Configured with **Groq Cloud's Free Tier** (active fast model: `openai/gpt-oss-20b` or `llama-3.3-70b-versatile`). Groq gives free developer API keys with fast token speeds and no credit card required.
+   - Alternatively, it can run 100% offline using **Ollama** (`ollama run llama3`).
 
 ---
 
-## 3. Environment Setup & Configuration
+## 3. What Is Completed & Working (Phases 1 – 6)
 
-### Prerequisites
-- **Python**: 3.10 or 3.11 installed.
-- **Node.js**: v18+ and `npm` installed.
-- **Git**: Installed.
-
-### 1. Backend `.env` File Configuration
-In the project root (`E:\Major project`), ensure a `.env` file exists with the following keys:
-
-```env
-# Database Path
-DATABASE_URL=sqlite:///promptlens.db
-
-# Provider API Keys for Proxy Interception
-GROQ_API_KEY=gsk_your_groq_api_key_here
-OPENAI_API_KEY=sk-your_openai_key_here
-ANTHROPIC_API_KEY=sk-ant-your_anthropic_key_here
-GEMINI_API_KEY=your_gemini_key_here
-
-# Phase 5: Suggestion Engine (Tier 2 LLM Optimizer)
-ENABLE_LLM_REWRITE=true
-OPTIMIZER_PROVIDER=groq
-OPTIMIZER_MODEL=openai/gpt-oss-20b
-OPTIMIZER_API_KEY=gsk_your_groq_optimizer_key_here
-```
-
-> [!NOTE]
-> If you do not have an OpenAI or Anthropic key, you can test everything using **Groq** (free tier) and **Ollama** (local). Groq is currently configured with the active fast model `openai/gpt-oss-20b`.
+1. **Proxy & Adapter Engine**: Reverse proxy for OpenAI, Anthropic, Gemini, Groq, and Ollama with async logging and cost accounting.
+2. **Read & Analytics API**: SQLite WAL database with time-bucketed aggregation, zero-gap filling, and pagination.
+3. **Overview Dashboard**: React 18 single-page app with date range filters, Recharts charts, and request inspection drawers.
+4. **Prompt Analyzer**: Batch detector for `redundant_sentences`, `repeated_content`, and `verbose_for_template`.
+5. **Suggestion Engine**: Deterministic cleanups and LLM rewrites with cosine similarity checks and tool overhead tracking.
+6. **Prompt Insights UI**: Two-tab navigation, summary audit cards, "Run analysis" action, flags table, side-by-side prompt diff, and clipboard copy.
 
 ---
 
 ## 4. How to Run Frontend & Backend
 
-### 1. Start the Backend Server (Terminal 1)
+### Terminal 1: Backend
 ```powershell
 cd "E:\Major project"
-
-# Activate the Python virtual environment
 .\venv\Scripts\activate
-
-# Launch FastAPI server with live reload
 uvicorn app.main:app --reload --port 8000
 ```
-* **Interactive Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* **Backend Health Check**: [http://localhost:8000/api/stats/summary](http://localhost:8000/api/stats/summary)
+* **Interactive Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+* **Backend Stats**: [http://localhost:8000/api/stats/summary](http://localhost:8000/api/stats/summary)
 
-### 2. Start the Frontend Dashboard (Terminal 2)
+### Terminal 2: Frontend
 ```powershell
 cd "E:\Major project\frontend"
-
-# Install dependencies if not already done
 npm install
-
-# Start Vite development server
 npm run dev
 ```
-* **Dashboard URL**: [http://localhost:5173](http://localhost:5173)
+* **Dashboard**: [http://localhost:5173](http://localhost:5173)
 
-### 3. Utility Scripts & Testing
+### Unit Tests & Verification
 ```powershell
 cd "E:\Major project"
-
-# Seed 200 demo request rows into promptlens.db for testing:
-.\venv\Scripts\python.exe scripts/seed_demo_data.py
-
-# Clear all demo data:
-.\venv\Scripts\python.exe scripts/seed_demo_data.py --clear
-
-# Run offline batch prompt analyzer manually:
-.\venv\Scripts\python.exe scripts/run_analyzer.py
-
-# Run prompt suggestion generator manually:
-.\venv\Scripts\python.exe scripts/run_suggestions.py
-
-# Run the complete test suite:
 .\venv\Scripts\pytest.exe -v -m "not slow"
 ```
 
 ---
 
-## 5. Work Division: Remaining Features
+## 5. Work Division: Real-Time Prompt Efficiency
 
-To complete the major project without overlapping work, the remaining milestones are split into two decoupled tracks:
+To transform PromptLens from an offline batch auditor into a real-time prompt efficiency suite, the remaining work is divided into two distinct tracks:
 
 ```mermaid
 graph LR
-    subgraph AkshatTrack ["Akshat: Backend Systems & Real-Time Intelligence"]
-        A1["1. SSE Streaming Proxy Support"]
-        A2["2. Semantic Response Cache Layer"]
-        A3["3. Automated Scheduled Audit & Webhook Alerts"]
+    subgraph AkshatTrack ["Akshat: Real-Time Optimization Engine (Backend)"]
+        A1["1. Auto-Audit on Ingest (No manual button)"]
+        A2["2. POST /api/audit-prompt (Pre-flight optimizer)"]
+        A3["3. Conversational Fluff & Politeness Stripper"]
+        A4["4. Pre-Send Auto-Optimize Header (X-PromptLens-Optimize)"]
     end
 
-    subgraph HitakshiTrack ["Hitakshi: UI Intelligence & Analytics Reporting"]
-        H1["1. Visual Word/Sentence Diff Viewer"]
-        H2["2. Interactive 'Test Rewrite' Playground"]
-        H3["3. PDF / CSV Audit Report Export"]
-        H4["4. Provider & Budget Settings UI"]
+    subgraph HitakshiTrack ["Hitakshi: Prompt Studio & Visual Diff (Frontend)"]
+        H1["1. Tab 3: Prompt Studio (Interactive Playground)"]
+        H2["2. Visual Red/Green Diff Highlighting"]
+        H3["3. 0-100% Efficiency Score Gauge"]
+        H4["4. Exportable PDF/CSV Audit Reports"]
     end
 ```
 
-### Division of Ownership
+### Responsibility Breakdown
 
-| Member | Domain & Ownership | Primary Files Owned |
+| Member | Domain & Ownership | Key Files Owned |
 | :--- | :--- | :--- |
-| **Akshat** | **Backend Proxy & Optimization Intelligence**<br>• Server-Sent Events (SSE) Streaming Proxy (`stream=true`)<br>• Prompt Caching & Deduplication Layer (zero-token exact/semantic cache)<br>• Background Scheduled Auditor & Webhook Alerts (Slack/Discord/Email) | `app/proxy.py`<br>`app/cache.py`<br>`app/scheduler.py`<br>`tests/test_streaming.py`<br>`tests/test_cache.py` |
-| **Hitakshi** | **Frontend Experience, Visual Diff & Analytics Reporting**<br>• In-browser side-by-side visual diff (red/green word deletion)<br>• Interactive "Test Rewrite" modal playground (run original vs rewritten live)<br>• CSV / PDF Audit Report Exporter for presentations<br>• Model latency percentile charts (p50/p90/p99) and Budget Alert settings | `frontend/src/components/SuggestionView.jsx`<br>`frontend/src/components/RewritePlayground.jsx`<br>`frontend/src/components/ExportModal.jsx`<br>`frontend/src/components/SettingsModal.jsx`<br>`frontend/src/App.css` |
+| **Akshat** | **Backend Optimization & Interception**<br>• Auto-audit on ingest inside proxy `BackgroundTasks`<br>• Real-time `POST /api/audit-prompt` endpoint<br>• Conversational filler & politeness stripping heuristic<br>• Optional live prompt shortening prior to upstream dispatch (`X-PromptLens-Optimize: true`) | `app/proxy.py`<br>`app/fluff_cleaner.py`<br>`app/api.py`<br>`tests/test_audit_prompt.py` |
+| **Hitakshi** | **Frontend Studio & UX Intelligence**<br>• New 3rd Tab: "Prompt Studio" (paste any prompt, click Optimize)<br>• Word-level visual diff viewer (red strikethrough for removed text)<br>• Efficiency Score badge (0–100%) with actionable tips<br>• PDF & CSV export for project presentations | `frontend/src/components/PromptStudio.jsx`<br>`frontend/src/components/DiffViewer.jsx`<br>`frontend/src/components/ExportModal.jsx`<br>`frontend/src/App.jsx`<br>`frontend/src/App.css` |
 
 ---
 
@@ -197,38 +138,55 @@ graph LR
 Copy and paste this entire prompt into Antigravity:
 
 ````markdown
-You are an expert Python/FastAPI engineer working on PromptLens (an LLM API proxy and intelligence auditor).
-Repository directory: E:\Major project
-Virtual environment: E:\Major project\venv\Scripts\python.exe
+You are an expert Python/FastAPI engineer working on PromptLens (E:\Major project).
+Python virtual environment: E:\Major project\venv\Scripts\python.exe
 
-### Context:
-Phases 1-6 are complete. The backend currently has:
-- Reverse proxy at `/proxy/{provider}` (OpenAI, Anthropic, Gemini, Groq, Ollama) logging to SQLite (`promptlens.db`).
-- Offline prompt analyzer (`/api/analyze`) and suggestion engine (`/api/suggest/{flag_id}`).
-- Full pytest suite passing (36 tests).
+### Project Goal:
+PromptLens's primary mission is making LLM prompts efficient and optimizing them in real time. We are transforming it from an offline batch tool into a real-time prompt efficiency engine.
 
-### Your Mission (Akshat's Track):
-Implement the following three backend capabilities without breaking existing endpoints or test suites:
+### Your Assignment (Akshat's Track):
+Implement the following four backend capabilities cleanly without breaking existing tests:
 
-1. **Streaming Proxy Support (SSE)**:
-   - In `app/proxy.py`, remove the `"Streaming is not supported yet"` 400 rejection when `body.get("stream") is True`.
-   - Forward upstream streaming chunks as `text/event-stream` using `StreamingResponse`.
-   - Accumulate chunks in memory during streaming so that when the stream completes, the full reply text, token counts, cost, and latency are logged to SQLite via background tasks just like non-streaming requests.
+1. **Auto-Audit on Every Request (Instant Background Ingest)**:
+   - In `app/proxy.py`, whenever a request is logged, immediately enqueue a background task to analyze that individual request (run the single-prompt analysis from `app/analyzer.py` and auto-generate the suggestion if flags are detected).
+   - The user should never have to manually click "Run analysis" for new requests.
 
-2. **Prompt Response Cache (Zero-Token Deduplication)**:
-   - Create `app/cache.py` with an in-memory or SQLite-backed cache table (`cached_responses`).
-   - If an incoming prompt matches an existing request (same provider, model, prompt text) within a configurable TTL (e.g. 24h), return the cached response immediately with `X-PromptLens-Cache: HIT`.
-   - Log the request with `cost_usd: 0.0` and mark it as a cache hit so the dashboard reflects 100% token savings.
+2. **Pre-Flight Prompt Optimizer Endpoint (`POST /api/audit-prompt`)**:
+   - Create a fast standalone endpoint in `app/api.py`: `POST /api/audit-prompt`.
+   - Accepts JSON payload: `{"prompt_text": "...", "provider": "groq", "model": "openai/gpt-oss-20b"}`.
+   - Runs:
+     1. Conversational fluff removal.
+     2. Exact duplicate sentence removal.
+     3. Repeated content formatting cleanup.
+     4. (Optional) Tier 2 LLM rewrite if template is verbose and `ENABLE_LLM_REWRITE=true`.
+   - Returns JSON:
+     ```json
+     {
+       "original_prompt": "...",
+       "optimized_prompt": "...",
+       "tokens_original": 120,
+       "tokens_optimized": 78,
+       "tokens_saved": 42,
+       "efficiency_score": 65,
+       "flaws_detected": ["conversational_fluff", "redundant_sentences"],
+       "explanations": ["Removed polite conversational preamble.", "Removed 1 duplicate sentence."]
+     }
+     ```
 
-3. **Scheduled Background Audit & Webhook Alerts**:
-   - Create a background task / cron runner in `app/scheduler.py` that periodically triggers `run_analysis()` every X hours.
-   - If total estimated wasted tokens or cost exceed a threshold, send an alert payload to a configured webhook URL (Discord/Slack format).
+3. **Conversational Fluff & Politeness Stripper (`app/fluff_cleaner.py`)**:
+   - Detects and removes polite conversational filler that wastes tokens in everyday AI prompts:
+     - Greetings/Preamble: *"Hey ChatGPT", "Hello AI", "Good morning", "I hope you are having a great day"*
+     - Polite filler: *"Could you please kindly help me with...", "I was wondering if you could possibly...", "Please act as an expert and..."*
+     - Trailing pleasantries: *"Thank you so much in advance!", "Thanks!"*
+   - Returns the cleaned text and the number of characters/tokens saved.
 
-### Constraints:
-- Do not modify existing frontend files.
-- Keep SQLite WAL mode intact and maintain `PRAGMA foreign_keys = ON`.
-- Write comprehensive unit tests in `tests/test_streaming.py` and `tests/test_cache.py`.
-- Run `pytest -v` to ensure all existing and new tests pass.
+4. **Live Auto-Optimize Proxy Mode**:
+   - In `app/proxy.py`, check for the header `X-PromptLens-Optimize: true` (or query param `?optimize=true`).
+   - If present, clean the prompt using the fluff and duplicate cleaner *before* dispatching it to the upstream LLM, immediately saving tokens live on the wire.
+
+### Verification:
+- Write unit tests in `tests/test_audit_prompt.py` testing the new endpoint and fluff cleaner.
+- Run `.\venv\Scripts\pytest.exe -v -m "not slow"` to ensure all tests pass.
 ````
 
 ---
@@ -238,48 +196,52 @@ Implement the following three backend capabilities without breaking existing end
 Copy and paste this entire prompt into Antigravity:
 
 ````markdown
-You are an expert React/Frontend engineer working on PromptLens (an LLM API proxy and intelligence auditor).
-Repository directory: E:\Major project\frontend
+You are an expert React engineer working on PromptLens (E:\Major project\frontend).
 Backend API: http://localhost:8000
 
-### Context:
-Phases 1-6 are complete. The frontend is built with React 18, Vite, plain JavaScript, and plain CSS (no Tailwind, no third-party UI component libraries).
-Top navigation has two tabs: "Overview" and "Prompt Insights".
-All existing endpoints in `src/api.js` use native `fetch()` with `AbortController`.
+### Project Goal:
+PromptLens's primary mission is making LLM prompts efficient. We are creating an interactive "Prompt Studio / Doctor" where users can test, audit, and optimize prompts in real time.
 
-### Your Mission (Hitakshi's Track):
-Implement the following four UX intelligence capabilities in the frontend without breaking existing features:
+### Your Assignment (Hitakshi's Track):
+Implement the following four UX capabilities in plain React 18, Vite, and plain CSS without third-party component libraries:
 
-1. **Visual Word & Sentence Diff in Suggestions**:
-   - In `src/components/SuggestionView.jsx`, enhance the side-by-side prompt boxes.
-   - Provide a toggle button: "Split View" vs "Visual Diff".
-   - In Visual Diff mode, compute character/word-level changes between `originalPromptText` and `rewritten_prompt` (using simple LCS or word split) and highlight removed text in light red strikethrough and preserved text cleanly.
+1. **New 3rd Tab: "Prompt Studio" (`src/components/PromptStudio.jsx`)**:
+   - In `src/App.jsx`, add a 3rd navigation tab: `Overview`, `Prompt Insights`, and `Prompt Studio`.
+   - The Prompt Studio features:
+     - A large multi-line textarea for users to paste any raw prompt.
+     - An "Optimize Prompt" action button that calls `POST /api/audit-prompt`.
+     - Loading state with spinner.
+     - When optimized, displays:
+       - **Efficiency Score** circular badge (e.g. `92% - Highly Efficient` in green, or `54% - High Waste` in red).
+       - Quick stats: *Original Tokens*, *Optimized Tokens*, *Tokens Saved (% saved)*.
+       - Explanations list of what was cleaned (e.g., *"Removed conversational fluff"*, *"Removed duplicate sentence"*).
 
-2. **Interactive "Test Rewrite" Playground**:
-   - In `src/components/FlagDetail.jsx`, add a "Test Rewrite Live" button when a rewritten prompt exists.
-   - Opens a sub-panel allowing the user to send both the original and rewritten prompt to `/proxy/{provider}` through the dashboard, comparing both replies side by side with real-time latency and token differences.
+2. **Visual Red/Green Diff Viewer (`src/components/DiffViewer.jsx`)**:
+   - Inside Prompt Studio and in the existing `SuggestionView.jsx`, add a visual diff mode.
+   - Highlights deleted filler/redundant words in soft red with strikethrough (`<del>` / `.diff-deleted`).
+   - Displays preserved/clean text normally.
+   - Includes a one-click "Copy Optimized Prompt" button with feedback (`✓ Copied!`).
 
-3. **Audit Report Export (CSV / PDF)**:
-   - Add an "Export Report" button in the header of `src/components/InsightsTab.jsx`.
-   - Generates a downloadable CSV containing all flagged prompts, flag types, estimated token waste, and savings.
-   - Provides a clean print-friendly CSS stylesheet so printing to PDF (`window.print()`) creates a clean executive report for project presentations.
-
-4. **Latency Percentile & Model Breakdown Chart**:
-   - In `src/components/UsageChart.jsx` (or a new card in `Overview`), add a toggle for "Latency Percentiles" displaying p50, p90, and p99 response times over time.
+3. **Audit Report Exporter (CSV & PDF)**:
+   - In the header of `src/components/InsightsTab.jsx`, add an "Export Report" button.
+   - Exports all flagged prompts and savings to a downloadable CSV.
+   - Provides a print stylesheet (`@media print`) so using the browser's Print to PDF produces a clean, professional executive report suitable for major project viva presentations.
 
 ### Constraints:
-- Stick to pure React 18, Vite, plain CSS in `src/App.css`, and Recharts. Do not install Tailwind, MUI, or Bootstrap.
-- Maintain existing tab switching state preservation in `App.jsx`.
+- Use plain React 18, plain CSS in `src/App.css`, and Recharts. Do not install Tailwind, Material-UI, or Bootstrap.
+- Maintain existing tab state preservation in `App.jsx`.
 - Run `npm run build` inside `frontend/` to ensure zero compilation or styling errors.
 ````
 
 ---
 
-## 8. Verification & Delivery Checklist Before Final Submission
+## 8. Delivery Checklist for Final Submission
 
-- [ ] Backend runs with zero errors: `uvicorn app.main:app --reload --port 8000`
-- [ ] Frontend builds with zero errors: `npm run build`
-- [ ] Automated tests pass: `pytest -v -m "not slow"`
-- [ ] No orphaned records in SQLite: dependent flags, analyses, and suggestions are cleanly cascading.
-- [ ] Active tabs show clean transparent styling with blue underline indicator.
-- [ ] Both team members pull and merge using clean feature branches (`feature/streaming-cache` and `feature/ui-diff-export`).
+- [ ] Real-time auto-audit works on every proxy request without manual button clicks.
+- [ ] `POST /api/audit-prompt` returns instant prompt optimizations.
+- [ ] Conversational fluff cleaner strips filler and politeness bloat.
+- [ ] Prompt Studio tab lets users interactively optimize any prompt in the browser.
+- [ ] Visual diff highlights removed words with red strikethrough.
+- [ ] Backend tests pass: `pytest -v -m "not slow"`.
+- [ ] Frontend builds cleanly: `npm run build`.
+- [ ] System operates with $0.00 cost using Groq free tier / Ollama.
