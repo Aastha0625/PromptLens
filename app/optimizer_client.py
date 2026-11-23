@@ -86,6 +86,8 @@ class OptimizerClient:
             "model": self.model,
             "messages": messages,
         }
+        if self.provider == "anthropic":
+            body["max_tokens"] = 1024
 
         start_time = time.time()
         with httpx.Client(timeout=self.timeout) as client:

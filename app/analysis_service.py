@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 
-from .models import RequestLog, PromptFlag, PromptAnalysis, utc_now
+from .models import RequestLog, PromptFlag, PromptAnalysis, Suggestion, utc_now
 from .analyzer_config import (
     ANALYZER_VERSION,
     VERBOSE_GROUP_MIN_SIZE,
@@ -108,9 +108,10 @@ def run_analysis(
     for i in range(0, total_analyzed, batch_size):
         batch = all_target_requests[i : i + batch_size]
         for req in batch:
-            # Idempotency: Delete old flags and analysis for this request right before writing new ones
-            db.query(PromptFlag).filter(PromptFlag.request_id == req.id).delete()
-            db.query(PromptAnalysis).filter(PromptAnalysis.request_id == req.id).delete()
+            # Idempotency: Delete old suggestions, flags, and analysis for this request
+            db.query(Suggestion).filter(Suggestion.request_id == req.id).delete(synchronize_session="fetch")
+            db.query(PromptFlag).filter(PromptFlag.request_id == req.id).delete(synchronize_session="fetch")
+            db.query(PromptAnalysis).filter(PromptAnalysis.request_id == req.id).delete(synchronize_session="fetch")
 
             # Analyze single prompt
             tokens = req.input_tokens or req.total_tokens

@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime, timezone, timedelta
 import random
 from app.database import SessionLocal, engine, Base
-from app.models import RequestLog
+from app.models import RequestLog, PromptFlag, PromptAnalysis, Suggestion, OptimizerUsage
 
 PROVIDERS = ['groq', 'openai', 'anthropic', 'ollama']
 MODELS = {
@@ -71,10 +71,22 @@ def seed():
 
 def clear():
     db = SessionLocal()
-    count = db.query(RequestLog).filter(RequestLog.is_demo == True).delete()
-    db.commit()
+    demo_ids = [r[0] for r in db.query(RequestLog.id).filter(RequestLog.is_demo == True).all()]
+    count = 0
+    if demo_ids:
+        # Delete dependent rows first
+        db.query(OptimizerUsage).filter(
+            OptimizerUsage.suggestion_id.in_(
+                db.query(Suggestion.id).filter(Suggestion.request_id.in_(demo_ids))
+            )
+        ).delete(synchronize_session=False)
+        db.query(Suggestion).filter(Suggestion.request_id.in_(demo_ids)).delete(synchronize_session=False)
+        db.query(PromptFlag).filter(PromptFlag.request_id.in_(demo_ids)).delete(synchronize_session=False)
+        db.query(PromptAnalysis).filter(PromptAnalysis.request_id.in_(demo_ids)).delete(synchronize_session=False)
+        count = db.query(RequestLog).filter(RequestLog.id.in_(demo_ids)).delete(synchronize_session=False)
+        db.commit()
     db.close()
-    print(f"Deleted {count} demo rows.")
+    print(f"Deleted {count} demo rows and associated flags/suggestions.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Seed demo data")

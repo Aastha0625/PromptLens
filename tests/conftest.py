@@ -19,6 +19,9 @@ engine = create_engine(
 
 @event.listens_for(engine, "connect")
 def register_custom_functions(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
     from app.analyzer import extract_template_key
     dbapi_connection.create_function("template_key", 1, extract_template_key)
 
