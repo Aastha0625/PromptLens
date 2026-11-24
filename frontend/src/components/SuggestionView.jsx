@@ -1,26 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import StatusBadge from './StatusBadge';
+import DiffViewer from './DiffViewer';
 import { formatNumber } from '../format';
 
 export default function SuggestionView({ suggestion, originalPromptText }) {
-  const [copyState, setCopyState] = useState('idle'); // 'idle' | 'copied' | 'failed'
-
   if (!suggestion) return null;
 
   const hasRewrite = suggestion.rewritten_prompt != null && suggestion.rewritten_prompt.trim().length > 0;
   const isLlm = suggestion.method === 'llm_rewrite';
-
-  const handleCopy = async () => {
-    if (!hasRewrite) return;
-    try {
-      await navigator.clipboard.writeText(suggestion.rewritten_prompt);
-      setCopyState('copied');
-      setTimeout(() => setCopyState('idle'), 2500);
-    } catch {
-      setCopyState('failed');
-      setTimeout(() => setCopyState('idle'), 2500);
-    }
-  };
+  const original = originalPromptText || suggestion.original_prompt_excerpt || '';
 
   return (
     <div className="suggestion-view">
@@ -28,38 +16,28 @@ export default function SuggestionView({ suggestion, originalPromptText }) {
         <StatusBadge suggestion={suggestion} />
       </div>
 
-      {/* Side-by-side boxes (stacked on mobile via CSS) */}
-      <div className="side-by-side">
-        <div className="prompt-box-wrapper">
-          <div className="box-header">
-            <h4>Original Prompt</h4>
-          </div>
-          <pre className="prompt-box original-box">
-            {originalPromptText || suggestion.original_prompt_excerpt || "—"}
-          </pre>
-        </div>
-
-        {hasRewrite && (
+      {/* Visual Diff / Side-by-side component */}
+      {hasRewrite ? (
+        <DiffViewer
+          originalText={original}
+          modifiedText={suggestion.rewritten_prompt}
+          titleOriginal="Original Prompt"
+          titleModified="Suggested Rewrite"
+          showCopy={true}
+          initialMode="diff"
+        />
+      ) : (
+        <div className="side-by-side">
           <div className="prompt-box-wrapper">
             <div className="box-header">
-              <h4>Suggested Rewrite</h4>
-              <button 
-                type="button"
-                className="btn-copy"
-                onClick={handleCopy}
-                disabled={copyState === 'copied'}
-              >
-                {copyState === 'copied' && "✓ Copied!"}
-                {copyState === 'failed' && "✗ Copy failed"}
-                {copyState === 'idle' && "Copy rewritten prompt"}
-              </button>
+              <h4>Original Prompt</h4>
             </div>
-            <pre className="prompt-box rewrite-box">
-              {suggestion.rewritten_prompt}
+            <pre className="prompt-box original-box">
+              {original || '—'}
             </pre>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Token Savings line */}
       {hasRewrite && suggestion.estimated_token_savings > 0 && (
