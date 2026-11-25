@@ -144,8 +144,8 @@ def get_or_create_suggestion(
         if optimizer_client is None:
             optimizer_client = OptimizerClient()
 
-        # 3. OPTIMIZER_API_KEY must be configured
-        if not optimizer_client.api_key:
+        # 3. OPTIMIZER_API_KEY must be configured (unless local Ollama with auth_style='none')
+        if optimizer_client.provider != "ollama" and not optimizer_client.api_key:
             suggestion.rewritten_prompt = None
             suggestion.message = "OPTIMIZER_API_KEY is not configured."
             suggestion.estimated_token_savings = 0
