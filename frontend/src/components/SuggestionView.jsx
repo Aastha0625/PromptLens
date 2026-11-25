@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import StatusBadge from './StatusBadge';
+import DiffViewer from './DiffViewer';
 import { formatNumber } from '../format';
 
 export default function SuggestionView({ suggestion, originalPromptText }) {
   const [copyState, setCopyState] = useState('idle'); // 'idle' | 'copied' | 'failed'
+  const [viewMode, setViewMode] = useState('diff'); // 'diff' | 'split'
 
   if (!suggestion) return null;
 
   const hasRewrite = suggestion.rewritten_prompt != null && suggestion.rewritten_prompt.trim().length > 0;
   const isLlm = suggestion.method === 'llm_rewrite';
+  const originalText = originalPromptText || suggestion.original_prompt_excerpt || '—';
 
   const handleCopy = async () => {
     if (!hasRewrite) return;
@@ -24,42 +27,69 @@ export default function SuggestionView({ suggestion, originalPromptText }) {
 
   return (
     <div className="suggestion-view">
-      <div className="suggestion-status-container">
-        <StatusBadge suggestion={suggestion} />
-      </div>
-
-      {/* Side-by-side boxes (stacked on mobile via CSS) */}
-      <div className="side-by-side">
-        <div className="prompt-box-wrapper">
-          <div className="box-header">
-            <h4>Original Prompt</h4>
-          </div>
-          <pre className="prompt-box original-box">
-            {originalPromptText || suggestion.original_prompt_excerpt || "—"}
-          </pre>
+      <div className="suggestion-status-row">
+        <div className="suggestion-status-container">
+          <StatusBadge suggestion={suggestion} />
         </div>
-
         {hasRewrite && (
-          <div className="prompt-box-wrapper">
-            <div className="box-header">
-              <h4>Suggested Rewrite</h4>
-              <button 
-                type="button"
-                className="btn-copy"
-                onClick={handleCopy}
-                disabled={copyState === 'copied'}
-              >
-                {copyState === 'copied' && "✓ Copied!"}
-                {copyState === 'failed' && "✗ Copy failed"}
-                {copyState === 'idle' && "Copy rewritten prompt"}
-              </button>
-            </div>
-            <pre className="prompt-box rewrite-box">
-              {suggestion.rewritten_prompt}
-            </pre>
+          <div className="view-mode-toggle" role="group" aria-label="Prompt comparison mode">
+            <button
+              type="button"
+              className={viewMode === 'diff' ? 'active' : ''}
+              onClick={() => setViewMode('diff')}
+            >
+              Visual Diff
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'split' ? 'active' : ''}
+              onClick={() => setViewMode('split')}
+            >
+              Side-by-Side
+            </button>
           </div>
         )}
       </div>
+
+      {hasRewrite && viewMode === 'diff' ? (
+        <DiffViewer
+          originalText={originalText}
+          optimizedText={suggestion.rewritten_prompt}
+          title="Visual Diff"
+          copyLabel="Copy Optimized Prompt"
+        />
+      ) : (
+        /* Side-by-side boxes (stacked on mobile via CSS) */
+        <div className="side-by-side">
+          <div className="prompt-box-wrapper">
+            <div className="box-header">
+              <h4>Original Prompt</h4>
+            </div>
+            <pre className="prompt-box original-box">{originalText}</pre>
+          </div>
+
+          {hasRewrite && (
+            <div className="prompt-box-wrapper">
+              <div className="box-header">
+                <h4>Suggested Rewrite</h4>
+                <button
+                  type="button"
+                  className="btn-copy"
+                  onClick={handleCopy}
+                  disabled={copyState === 'copied'}
+                >
+                  {copyState === 'copied' && '✓ Copied!'}
+                  {copyState === 'failed' && '✗ Copy failed'}
+                  {copyState === 'idle' && 'Copy rewritten prompt'}
+                </button>
+              </div>
+              <pre className="prompt-box rewrite-box">
+                {suggestion.rewritten_prompt}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Token Savings line */}
       {hasRewrite && suggestion.estimated_token_savings > 0 && (
