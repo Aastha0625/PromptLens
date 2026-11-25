@@ -12,6 +12,10 @@ __pycache__/
 
 # Database
 promptlens.db
+promptlens.db-shm
+promptlens.db-wal
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # OS generated files
