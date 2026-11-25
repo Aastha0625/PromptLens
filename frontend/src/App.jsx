@@ -149,7 +149,14 @@ export default function App() {
     <div className="app">
       <header>
         <div className="header-top">
-          <h1>PromptLens <span className="subtitle">the API Auditor</span></h1>
+          <div>
+            <h1>PromptLens <span className="subtitle">the API Auditor</span></h1>
+          </div>
+          <div className="proxy-live-badge" title="Point your apps (e.g. FinAI, Complaint System) to this proxy URL">
+            <span className="proxy-live-dot" />
+            <span className="proxy-live-label">Proxy Listening:</span>
+            <code>http://localhost:8000/proxy/&#123;provider&#125;</code>
+          </div>
         </div>
 
         {/* Tab Navigation (Change 3) */}

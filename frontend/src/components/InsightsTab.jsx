@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import InsightsSummary from './InsightsSummary';
 import FlagsTable from './FlagsTable';
 import FlagDetail from './FlagDetail';
@@ -31,6 +31,10 @@ export default function InsightsTab() {
   const [selectedFlag, setSelectedFlag] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Live Auto-Refresh State (polls every 6s so live finAI calls show up automatically)
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const autoRefreshTimerRef = useRef(null);
+
   // Run Analysis State
   const [analysisState, setAnalysisState] = useState({
     running: false,
@@ -40,9 +44,9 @@ export default function InsightsTab() {
   });
 
   // Fetch summaries
-  const loadSummaries = useCallback(() => {
+  const loadSummaries = useCallback((isBackground = false) => {
     const controller = new AbortController();
-    setSummaryLoading(true);
+    if (!isBackground) setSummaryLoading(true);
 
     Promise.all([
       fetchFlagsSummary(controller.signal),
@@ -53,7 +57,7 @@ export default function InsightsTab() {
         setSuggestionsSummary(sSum);
         setSummaryLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.name === 'AbortError') return;
         setSummaryLoading(false);
       });
@@ -62,9 +66,9 @@ export default function InsightsTab() {
   }, []);
 
   // Fetch table data
-  const loadFlags = useCallback(() => {
+  const loadFlags = useCallback((isBackground = false) => {
     const controller = new AbortController();
-    setTableLoading(true);
+    if (!isBackground) setTableLoading(true);
     setTableError(null);
 
     fetchFlags({
@@ -74,11 +78,11 @@ export default function InsightsTab() {
       severity: filters.severity,
       provider: filters.provider,
     }, controller.signal)
-      .then(res => {
+      .then((res) => {
         setFlagsData(res);
         setTableLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.name === 'AbortError') return;
         setTableError(err.message);
         setTableLoading(false);
@@ -87,7 +91,7 @@ export default function InsightsTab() {
     return controller;
   }, [page, filters]);
 
-  // Initial load on mount
+  // Initial load
   useEffect(() => {
     const c1 = loadSummaries();
     const c2 = loadFlags();
@@ -96,6 +100,19 @@ export default function InsightsTab() {
       c2.abort();
     };
   }, [loadSummaries, loadFlags]);
+
+  // Live auto-refresh polling every 6 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
+    autoRefreshTimerRef.current = setInterval(() => {
+      loadSummaries(true);
+      loadFlags(true);
+    }, 6000);
+
+    return () => {
+      if (autoRefreshTimerRef.current) clearInterval(autoRefreshTimerRef.current);
+    };
+  }, [autoRefresh, loadSummaries, loadFlags]);
 
   // Handle Run Analysis click (POST is not aborted)
   const handleRunAnalysis = async () => {
@@ -138,14 +155,27 @@ export default function InsightsTab() {
 
   return (
     <div className="insights-tab">
-      {/* Top Header & Run Analysis Action */}
+      {/* Sleek Live Header */}
       <div className="insights-header-bar">
         <div>
-          <h2>Prompt Insights</h2>
-          <p className="text-muted-sm">Audit prompt waste, view flags, and review optimized rewrites.</p>
+          <h2>Live Interceptor & Prompt Auditor</h2>
+          <p className="text-muted-sm">
+            Auditing every prompt routed through <code>http://localhost:8000/proxy/...</code> in real time.
+          </p>
         </div>
 
         <div className="insights-header-actions">
+          {/* Live Polling Toggle */}
+          <button
+            type="button"
+            className={`btn-live-toggle ${autoRefresh ? 'active' : ''}`}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            title="Toggle live auto-refresh every 6 seconds"
+          >
+            <span className={`live-pulse-dot ${autoRefresh ? 'pulse' : ''}`} />
+            {autoRefresh ? 'Live Auto-Audit: ON' : 'Live Auto-Audit: PAUSED'}
+          </button>
+
           <button
             type="button"
             className="btn btn-export-report"
@@ -154,27 +184,15 @@ export default function InsightsTab() {
             Export Report
           </button>
 
-          <div className="run-analysis-container">
-            <button 
-              type="button" 
-              className="btn btn-primary btn-run-analysis"
-              onClick={handleRunAnalysis}
-              disabled={analysisState.running}
-            >
-              {analysisState.running ? (
-                <span className="spinner-text">
-                  <span className="spinner-icon" /> Running analysis...
-                </span>
-              ) : (
-                "Run analysis"
-              )}
-            </button>
-            {analysisState.running && (
-              <span className="analysis-subnote">
-                first run may take a few minutes (model download)
-              </span>
-            )}
-          </div>
+          <button 
+            type="button" 
+            className="btn btn-run-analysis"
+            onClick={handleRunAnalysis}
+            disabled={analysisState.running}
+            style={{ fontSize: '13px' }}
+          >
+            {analysisState.running ? 'Scanning...' : 'Re-scan History'}
+          </button>
         </div>
       </div>
 
@@ -199,14 +217,14 @@ export default function InsightsTab() {
         </div>
       )}
 
-      {/* 1. Summary Cards */}
+      {/* 1. Simplified Summary Cards */}
       <InsightsSummary 
         flagsSummary={flagsSummary} 
         suggestionsSummary={suggestionsSummary} 
         loading={summaryLoading} 
       />
 
-      {/* 2. Flags Table */}
+      {/* 2. Modern Flags Table */}
       <FlagsTable 
         data={flagsData} 
         loading={tableLoading} 
@@ -219,7 +237,7 @@ export default function InsightsTab() {
         onRetry={loadFlags} 
       />
 
-      {/* 3. Flag Detail Modal (Keyed by flag.id so switching flags never displays stale state) */}
+      {/* 3. Sleek Flag Detail Drawer / Modal */}
       {selectedFlag && (
         <FlagDetail 
           key={selectedFlag.id}
