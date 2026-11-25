@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import InsightsSummary from './InsightsSummary';
 import FlagsTable from './FlagsTable';
 import FlagDetail from './FlagDetail';
+import ExportModal from './ExportModal';
 import { 
   fetchFlags, 
   fetchFlagsSummary, 
@@ -28,6 +29,7 @@ export default function InsightsTab() {
 
   // Modal State
   const [selectedFlag, setSelectedFlag] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Run Analysis State
   const [analysisState, setAnalysisState] = useState({
@@ -143,26 +145,37 @@ export default function InsightsTab() {
           <p className="text-muted-sm">Audit prompt waste, view flags, and review optimized rewrites.</p>
         </div>
 
-        <div className="run-analysis-container">
+        <div className="insights-header-actions">
           <button 
             type="button" 
-            className="btn btn-primary btn-run-analysis"
-            onClick={handleRunAnalysis}
-            disabled={analysisState.running}
+            className="btn btn-secondary btn-export-report"
+            onClick={() => setShowExportModal(true)}
+            title="Export audit report as CSV or printable PDF"
           >
-            {analysisState.running ? (
-              <span className="spinner-text">
-                <span className="spinner-icon" /> Running analysis...
-              </span>
-            ) : (
-              "Run analysis"
-            )}
+            📥 Export Report
           </button>
-          {analysisState.running && (
-            <span className="analysis-subnote">
-              first run may take a few minutes (model download)
-            </span>
-          )}
+
+          <div className="run-analysis-container">
+            <button 
+              type="button" 
+              className="btn btn-primary btn-run-analysis"
+              onClick={handleRunAnalysis}
+              disabled={analysisState.running}
+            >
+              {analysisState.running ? (
+                <span className="spinner-text">
+                  <span className="spinner-icon" /> Running analysis...
+                </span>
+              ) : (
+                "Run analysis"
+              )}
+            </button>
+            {analysisState.running && (
+              <span className="analysis-subnote">
+                first run may take a few minutes (model download)
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -214,6 +227,15 @@ export default function InsightsTab() {
           flag={selectedFlag} 
           onClose={() => setSelectedFlag(null)} 
           onSuggestionGenerated={handleSuggestionGenerated}
+        />
+      )}
+
+      {/* 4. Export Report Modal */}
+      {showExportModal && (
+        <ExportModal
+          onClose={() => setShowExportModal(false)}
+          flagsSummary={flagsSummary}
+          suggestionsSummary={suggestionsSummary}
         />
       )}
     </div>
