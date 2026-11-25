@@ -5,6 +5,7 @@ import UsageChart from './components/UsageChart';
 import RequestsTable from './components/RequestsTable';
 import RequestDetail from './components/RequestDetail';
 import InsightsTab from './components/InsightsTab';
+import PromptStudio from './components/PromptStudio';
 import { fetchSummary, fetchTimeline, fetchRequests } from './api';
 import './App.css';
 
@@ -29,9 +30,10 @@ function getDatesForPreset(preset) {
 
 export default function App() {
   // Navigation Tabs State (Change 3)
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'insights'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'insights' | 'studio'
   const [hasMountedOverview, setHasMountedOverview] = useState(true);
   const [hasMountedInsights, setHasMountedInsights] = useState(false);
+  const [hasMountedStudio, setHasMountedStudio] = useState(false);
 
   // Overview Filters & State (Preserved across tab switches)
   const [provider, setProvider] = useState('all');
@@ -53,6 +55,8 @@ export default function App() {
       setHasMountedInsights(true);
     } else if (tab === 'overview') {
       setHasMountedOverview(true);
+    } else if (tab === 'studio') {
+      setHasMountedStudio(true);
     }
   };
 
@@ -164,6 +168,13 @@ export default function App() {
           >
             Prompt Insights
           </button>
+          <button 
+            type="button"
+            className={`tab-btn ${activeTab === 'studio' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('studio')}
+          >
+            Prompt Studio
+          </button>
         </nav>
       </header>
 
@@ -211,6 +222,13 @@ export default function App() {
         {hasMountedInsights && (
           <div style={{ display: activeTab === 'insights' ? 'block' : 'none' }}>
             <InsightsTab />
+          </div>
+        )}
+
+        {/* PROMPT STUDIO TAB (Mounted on first open, kept mounted, hidden via CSS when inactive) */}
+        {hasMountedStudio && (
+          <div style={{ display: activeTab === 'studio' ? 'block' : 'none' }}>
+            <PromptStudio />
           </div>
         )}
       </main>
