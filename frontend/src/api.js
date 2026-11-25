@@ -121,3 +121,18 @@ export async function fetchSuggestionsSummary(signal) {
   if (!res.ok) throw new Error(`Failed to fetch suggestions summary: ${res.status}`);
   return res.json();
 }
+
+// ==================== Real-Time Prompt Studio Endpoint ====================
+
+export async function auditPrompt({ prompt_text, provider = "groq", model = "openai/gpt-oss-20b" }) {
+  const res = await fetch(`${API_BASE}/api/audit-prompt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt_text, provider, model }),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Prompt audit failed: ${res.status}`);
+  }
+  return res.json();
+}
