@@ -143,3 +143,20 @@ class SuggestionsSummary(BaseModel):
     total_estimated_token_savings: int
     optimizer_total_cost_usd: float
 
+
+class AuditPromptRequest(BaseModel):
+    prompt_text: str
+    provider: Optional[str] = "groq"
+    model: Optional[str] = "openai/gpt-oss-20b"
+
+
+class AuditPromptResponse(BaseModel):
+    original_prompt: str
+    optimized_prompt: str
+    tokens_original: int
+    tokens_optimized: int
+    tokens_saved: int
+    efficiency_score: int
+    flaws_detected: List[str]
+    explanations: List[str]
+
