@@ -3,7 +3,7 @@
 
 > **Audience:** Core Project Team (Akshat, Hitakshi)  
 > **Project Title:** PromptLens — The Real-Time LLM Prompt Auditor & Optimizer Studio  
-> **Repository Root:** `E:\Major project`  
+> **Repository Root:** `C:\Users\aksha\OneDrive\Desktop\PromptLens`  
 > **Cost Guarantee:** **$0.00 Required** (Fully operational on Groq Free Tier, Ollama, and local CPU heuristics).
 
 ---
@@ -80,7 +80,7 @@ The team does **not** need a paid AI account to build, test, and demonstrate thi
 
 ### Terminal 1: Backend
 ```powershell
-cd "E:\Major project"
+cd "C:\Users\aksha\OneDrive\Desktop\PromptLens"
 .\venv\Scripts\activate
 uvicorn app.main:app --reload --port 8000
 ```
@@ -89,7 +89,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### Terminal 2: Frontend
 ```powershell
-cd "E:\Major project\frontend"
+cd "C:\Users\aksha\OneDrive\Desktop\PromptLens\frontend"
 npm install
 npm run dev
 ```
@@ -97,7 +97,7 @@ npm run dev
 
 ### Unit Tests & Verification
 ```powershell
-cd "E:\Major project"
+cd "C:\Users\aksha\OneDrive\Desktop\PromptLens"
 .\venv\Scripts\pytest.exe -v -m "not slow"
 ```
 
@@ -138,8 +138,8 @@ graph LR
 Copy and paste this entire prompt into Antigravity:
 
 ````markdown
-You are an expert Python/FastAPI engineer working on PromptLens (E:\Major project).
-Python virtual environment: E:\Major project\venv\Scripts\python.exe
+You are an expert Python/FastAPI engineer working on PromptLens (C:\Users\aksha\OneDrive\Desktop\PromptLens).
+Python virtual environment: C:\Users\aksha\OneDrive\Desktop\PromptLens\venv\Scripts\python.exe
 
 ### Project Goal:
 PromptLens's primary mission is making LLM prompts efficient and optimizing them in real time. We are transforming it from an offline batch tool into a real-time prompt efficiency engine.
@@ -196,7 +196,7 @@ Implement the following four backend capabilities cleanly without breaking exist
 Copy and paste this entire prompt into Antigravity:
 
 ````markdown
-You are an expert React engineer working on PromptLens (E:\Major project\frontend).
+You are an expert React engineer working on PromptLens (C:\Users\aksha\OneDrive\Desktop\PromptLens\frontend).
 Backend API: http://localhost:8000
 
 ### Project Goal:
@@ -237,11 +237,11 @@ Implement the following four UX capabilities in plain React 18, Vite, and plain 
 
 ## 8. Delivery Checklist for Final Submission
 
-- [ ] Real-time auto-audit works on every proxy request without manual button clicks.
-- [ ] `POST /api/audit-prompt` returns instant prompt optimizations.
-- [ ] Conversational fluff cleaner strips filler and politeness bloat.
-- [ ] Prompt Studio tab lets users interactively optimize any prompt in the browser.
-- [ ] Visual diff highlights removed words with red strikethrough.
-- [ ] Backend tests pass: `pytest -v -m "not slow"`.
-- [ ] Frontend builds cleanly: `npm run build`.
-- [ ] System operates with $0.00 cost using Groq free tier / Ollama.
+- [x] Real-time auto-audit works on every proxy request without manual button clicks.
+- [x] `POST /api/audit-prompt` returns instant prompt optimizations.
+- [x] Conversational fluff cleaner strips filler and politeness bloat.
+- [x] Prompt Studio tab lets users interactively optimize any prompt in the browser.
+- [x] Visual diff highlights removed words with red strikethrough.
+- [x] Backend tests pass: `pytest -v -m "not slow"`.
+- [x] Frontend builds cleanly: `npm run build`.
+- [x] System operates with $0.00 cost using Groq free tier / Ollama.
