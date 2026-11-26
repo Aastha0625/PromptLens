@@ -233,7 +233,7 @@ export default function InsightsTab() {
         setPage={setPage} 
         filters={filters} 
         setFilters={setFilters} 
-        onRowClick={setSelectedFlag} 
+        onRowClick={(flag) => setSelectedFlag((prev) => (prev?.id === flag.id ? null : flag))} 
         onRetry={loadFlags} 
       />
 

@@ -131,7 +131,13 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
               Req #{flag.request_id} • {flag.provider} / {flag.model}
             </span>
           </div>
-          <button type="button" className="close-btn" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="close-btn"
+            onClick={onClose}
+            aria-label="Close"
+            title="Close (Esc)"
+          >
             &times;
           </button>
         </div>
@@ -165,23 +171,43 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
                   Click generate to produce an optimized, lean prompt recommendation.
                 </p>
               </div>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleAction}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Optimizing...' : buttonLabel}
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary-sm"
+                  onClick={onClose}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAction}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Optimizing...' : buttonLabel}
+                </button>
+              </div>
             </div>
           )}
+        </div>
 
-          {/* Secondary regenerate option if suggestion already exists */}
-          {suggestionData.data && (
-            <div className="detail-modal-footer">
-              <span className="text-muted-sm">
-                Cleaned by PromptLens optimizer engine.
-              </span>
+        {/* Pinned Modal Footer */}
+        <div className="detail-modal-footer">
+          <span className="text-muted-sm">
+            {suggestionData.data
+              ? 'Cleaned by PromptLens optimizer engine.'
+              : 'PromptLens Bloat Auditor'}
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary-sm"
+              onClick={onClose}
+            >
+              Close
+            </button>
+            {suggestionData.data && (
               <button
                 type="button"
                 className="btn btn-secondary-sm"
@@ -190,8 +216,8 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
               >
                 {actionLoading ? 'Working...' : buttonLabel}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
