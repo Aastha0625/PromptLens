@@ -113,6 +113,7 @@ export default function FlagsTable({
                   <th>Model</th>
                   <th>Prompt Preview</th>
                   <th style={{ width: '140px', textAlign: 'right' }}>Est. Wasted Tokens</th>
+                  <th style={{ width: '120px', textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,6 +126,7 @@ export default function FlagsTable({
                       key={flag.id} 
                       onClick={() => onRowClick(flag)}
                       className="clickable-row"
+                      title="Click anywhere to view flag details and visual diff"
                     >
                       <td>
                         <span 
@@ -144,6 +146,18 @@ export default function FlagsTable({
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 500 }}>
                         {wastedStr}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary btn-view-flag"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRowClick(flag);
+                          }}
+                        >
+                          View Details
+                        </button>
                       </td>
                     </tr>
                   );

@@ -121,3 +121,138 @@ export async function fetchSuggestionsSummary(signal) {
   if (!res.ok) throw new Error(`Failed to fetch suggestions summary: ${res.status}`);
   return res.json();
 }
+
+// ==================== Prompt Studio: Real-Time Audit (Hitakshi Track) ====================
+
+const FLUFF_PATTERNS = [
+  /^(hello|hey|hi|good\s+(morning|afternoon|evening))\s+(chatgpt|ai|assistant|claude|gemini)?[!,.]*\s*/i,
+  /^(i\s+hope\s+you\s+(are\s+having|have)\s+a\s+(great|wonderful|good|nice|productive)\s+day[!,.]*\s*)/i,
+  /^(could|can|would)\s+you\s+(please\s+)?(kindly\s+)?(help\s+me(\s+with|\s+to)?|assist\s+me(\s+with|\s+in)?)\s*/i,
+  /^(i\s+was\s+wondering\s+if\s+you\s+could\s+(possibly\s+)?(help\s+me|assist\s+me)\s*(with)?\s*)/i,
+  /^(please\s+kindly\s+)/i,
+  /(\s*(thank\s+you(\s+so\s+much|\s+very\s+much)?(\s+in\s+advance)?[!.]*)\s*)$/i,
+  /(\s*(thanks(\s+a\s+lot|\s+in\s+advance)?[!.]*)\s*)$/i,
+  /(\s*(i\s+(really\s+)?appreciate\s+(it|your\s+help)[!.]*)\s*)$/i
+];
+
+function estimateTokens(text) {
+  if (!text || !text.trim()) return 0;
+  // Approximation ~4 chars per token, min 1 per word
+  const words = text.trim().split(/\s+/).length;
+  const chars = text.length;
+  return Math.max(words, Math.round(chars / 3.8));
+}
+
+function localAuditPrompt(rawText) {
+  if (!rawText || !rawText.trim()) {
+    return {
+      original_prompt: '',
+      optimized_prompt: '',
+      tokens_original: 0,
+      tokens_optimized: 0,
+      tokens_saved: 0,
+      efficiency_score: 100,
+      flaws_detected: [],
+      explanations: ['Prompt is empty.']
+    };
+  }
+
+  let text = rawText;
+  const flaws = [];
+  const explanations = [];
+
+  // 1. Remove conversational fluff
+  let fluffStripped = false;
+  for (const pattern of FLUFF_PATTERNS) {
+    if (pattern.test(text)) {
+      text = text.replace(pattern, '').trim();
+      fluffStripped = true;
+    }
+  }
+  if (fluffStripped) {
+    flaws.push('conversational_fluff');
+    explanations.push('Removed polite conversational greetings, preamble, or trailing filler.');
+  }
+
+  // 2. Collapse excessive whitespace & repeated blank lines
+  const originalWsLen = text.length;
+  text = text.replace(/[ \t]{4,}/g, ' ');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  if (originalWsLen - text.length > 10) {
+    flaws.push('repeated_content');
+    explanations.push('Collapsed consecutive blank lines and redundant whitespace.');
+  }
+
+  // 3. Remove exact duplicate sentences
+  const sentenceRegex = /([^.?!]+[.?!]+)/g;
+  const rawSentences = text.match(sentenceRegex);
+  if (rawSentences && rawSentences.length > 1) {
+    const seen = new Set();
+    const unique = [];
+    let dupCount = 0;
+    for (const s of rawSentences) {
+      const normalized = s.trim().toLowerCase();
+      if (seen.has(normalized)) {
+        dupCount++;
+      } else {
+        seen.add(normalized);
+        unique.push(s);
+      }
+    }
+    if (dupCount > 0) {
+      text = unique.join(' ').trim();
+      flaws.push('redundant_sentences');
+      explanations.push(`Removed ${dupCount} exact duplicate sentence${dupCount > 1 ? 's' : ''}.`);
+    }
+  }
+
+  // Capitalize first letter if needed
+  if (text.length > 0) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  const origTokens = estimateTokens(rawText);
+  const optTokens = estimateTokens(text);
+  const savedTokens = Math.max(0, origTokens - optTokens);
+  
+  let score = 100;
+  if (origTokens > 0) {
+    const wasteRatio = savedTokens / origTokens;
+    score = Math.max(20, Math.min(100, Math.round(100 - (wasteRatio * 100))));
+  }
+
+  if (flaws.length === 0) {
+    explanations.push('Prompt is already concise and well-structured. No waste detected.');
+  }
+
+  return {
+    original_prompt: rawText,
+    optimized_prompt: text,
+    tokens_original: origTokens,
+    tokens_optimized: optTokens,
+    tokens_saved: savedTokens,
+    efficiency_score: score,
+    flaws_detected: flaws,
+    explanations
+  };
+}
+
+export async function auditPrompt(payload, signal) {
+  try {
+    const res = await fetch(`${API_BASE}/api/audit-prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+  }
+
+  // Fallback heuristic if endpoint is unavailable
+  return localAuditPrompt(payload.prompt_text || '');
+}

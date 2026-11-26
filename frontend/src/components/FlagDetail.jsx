@@ -116,8 +116,8 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
   const originalPromptText = requestData.data?.prompt_text || flag.prompt_preview || "";
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="header-tags">
             <span 
@@ -128,10 +128,10 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
             </span>
             <h3>{FLAG_TYPE_LABELS[flag.flag_type] || flag.flag_type}</h3>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>&times;</button>
+          <button type="button" className="close-button" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="modal-content">
+        <div className="flag-detail-body">
           {/* Explanation Banner */}
           <div className="detail-explanation-card">
             <h4>Why this was flagged</h4>
