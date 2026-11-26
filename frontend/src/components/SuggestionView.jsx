@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from './StatusBadge';
-import DiffViewer from './DiffViewer';
+import DiffViewer, { extractCleanUserInput } from './DiffViewer';
 import { formatNumber } from '../format';
 
 export default function SuggestionView({ suggestion, originalPromptText }) {
@@ -12,11 +12,12 @@ export default function SuggestionView({ suggestion, originalPromptText }) {
   const hasRewrite = suggestion.rewritten_prompt != null && suggestion.rewritten_prompt.trim().length > 0;
   const isLlm = suggestion.method === 'llm_rewrite';
   const originalText = originalPromptText || suggestion.original_prompt_excerpt || '—';
+  const cleanRewrite = extractCleanUserInput(suggestion.rewritten_prompt);
 
   const handleCopy = async () => {
     if (!hasRewrite) return;
     try {
-      await navigator.clipboard.writeText(suggestion.rewritten_prompt);
+      await navigator.clipboard.writeText(cleanRewrite || suggestion.rewritten_prompt);
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 2500);
     } catch {
@@ -63,15 +64,15 @@ export default function SuggestionView({ suggestion, originalPromptText }) {
         <div className="side-by-side">
           <div className="prompt-box-wrapper">
             <div className="box-header">
-              <h4>Original Prompt</h4>
+              <h4>Original Description / Input</h4>
             </div>
-            <pre className="prompt-box original-box">{originalText}</pre>
+            <pre className="prompt-box original-box">{extractCleanUserInput(originalText)}</pre>
           </div>
 
           {hasRewrite && (
             <div className="prompt-box-wrapper">
               <div className="box-header">
-                <h4>Suggested Rewrite</h4>
+                <h4>Clean Description</h4>
                 <button
                   type="button"
                   className="btn-copy"
@@ -80,11 +81,11 @@ export default function SuggestionView({ suggestion, originalPromptText }) {
                 >
                   {copyState === 'copied' && '✓ Copied!'}
                   {copyState === 'failed' && '✗ Copy failed'}
-                  {copyState === 'idle' && 'Copy rewritten prompt'}
+                  {copyState === 'idle' && '📋 Copy Clean Description'}
                 </button>
               </div>
               <pre className="prompt-box rewrite-box">
-                {suggestion.rewritten_prompt}
+                {cleanRewrite || suggestion.rewritten_prompt}
               </pre>
             </div>
           )}

@@ -88,6 +88,13 @@ async def handle_proxy_request(
         if k.lower() not in ["host", "content-length", "authorization", "x-promptlens-optimize"]:
             headers[k] = v
 
+    # Prioritize the client application's API key if sent in request headers (e.g. from FinAI)
+    client_auth = request.headers.get("authorization")
+    if client_auth:
+        headers["Authorization"] = client_auth
+    elif "x-api-key" in request.headers:
+        headers["x-api-key"] = request.headers["x-api-key"]
+
     start_time = time.time()
     try:
         upstream_response = await http_client.post(

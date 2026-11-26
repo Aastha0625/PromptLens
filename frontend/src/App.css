@@ -1141,6 +1141,151 @@ button.tab-btn.active:active {
   border-radius: 2px;
 }
 
+/* FOCUSED DIFF (REMOVED BLOAT & REWRITE) */
+.diff-view-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.diff-view-mode-toggle button {
+  background: #f8fafc;
+  color: #64748b;
+  border: none;
+  border-radius: 0;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diff-view-mode-toggle button:hover {
+  color: var(--text-main);
+  background: #f1f5f9;
+}
+
+.diff-view-mode-toggle button.active {
+  background: #ffffff;
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+.focused-diff-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.diff-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.diff-card-removed {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.diff-card-rewrite {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.diff-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.diff-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-card-body {
+  padding: 12px 14px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.diff-deleted-block {
+  color: #b91c1c;
+  text-decoration: line-through;
+  display: block;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.clean-rewrite-pre {
+  margin: 0;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #14532d;
+}
+
+.btn-copy-prominent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(22, 163, 74, 0.2);
+}
+
+.btn-copy-prominent:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.btn-copy-prominent:disabled {
+  background: #86efac;
+  cursor: default;
+}
+
+.btn-toggle-scope {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-toggle-scope:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
 /* PROMPT STUDIO */
 .studio-header-actions {
   display: flex;

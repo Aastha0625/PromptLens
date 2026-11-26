@@ -33,7 +33,8 @@ app.add_middleware(
 app.include_router(api_router)
 
 @app.post("/proxy/{provider}")
-async def proxy(provider: str, request: Request, background_tasks: BackgroundTasks):
+@app.post("/proxy/{provider}/{subpath:path}")
+async def proxy(provider: str, request: Request, background_tasks: BackgroundTasks, subpath: str = ""):
     if provider not in providers:
         raise HTTPException(status_code=404, detail="Unknown provider")
         
