@@ -1,95 +1,95 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 /**
- * Tokenize string into words and whitespace/newlines.
+ * Computes a word-and-whitespace-preserving diff between `original` and `optimized`.
+ * Falls back to line-level diff when token count is very large to keep rendering instant.
  */
-function tokenize(str) {
-  if (!str) return [];
-  return str.match(/\S+|\s+/g) || [];
-}
+function computeWordDiff(original, optimized) {
+  const orig = original || '';
+  const opt = optimized || '';
 
-/**
- * Word-level Longest Common Subsequence (LCS) diff.
- */
-function computeWordDiff(origText, modText) {
-  const origTokens = tokenize(origText);
-  const modTokens = tokenize(modText);
-
-  const n = origTokens.length;
-  const m = modTokens.length;
-
-  // For very large texts, fall back to simple line diff or block diff to prevent memory blowup
-  if (n * m > 250000) {
-    return [
-      { type: 'delete', value: origText },
-      { type: 'insert', value: modText }
-    ];
+  if (orig === opt) {
+    return [{ type: 'equal', text: opt }];
   }
 
-  // DP table
-  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  let tokensA = orig.split(/(\s+)/).filter((t) => t.length > 0);
+  let tokensB = opt.split(/(\s+)/).filter((t) => t.length > 0);
 
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      if (origTokens[i - 1] === modTokens[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
+  // Guard DP table size for very large prompts by switching to line tokens
+  if (tokensA.length * tokensB.length > 250000) {
+    tokensA = orig.split(/(\n)/).filter((t) => t.length > 0);
+    tokensB = opt.split(/(\n)/).filter((t) => t.length > 0);
+  }
+
+  const m = tokensA.length;
+  const n = tokensB.length;
+  const dp = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1));
+
+  for (let i = m - 1; i >= 0; i -= 1) {
+    for (let j = n - 1; j >= 0; j -= 1) {
+      if (tokensA[i] === tokensB[j]) {
+        dp[i][j] = dp[i + 1][j + 1] + 1;
       } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        dp[i][j] = dp[i + 1][j] >= dp[i][j + 1] ? dp[i + 1][j] : dp[i][j + 1];
       }
     }
   }
 
-  // Backtrack
-  let i = n;
-  let j = m;
-  const diff = [];
-
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && origTokens[i - 1] === modTokens[j - 1]) {
-      diff.unshift({ type: 'equal', value: origTokens[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      diff.unshift({ type: 'insert', value: modTokens[j - 1] });
-      j--;
-    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-      diff.unshift({ type: 'delete', value: origTokens[i - 1] });
-      i--;
-    }
-  }
-
-  // Merge consecutive tokens of the same type for cleaner DOM rendering
-  const merged = [];
-  for (const token of diff) {
-    if (merged.length > 0 && merged[merged.length - 1].type === token.type) {
-      merged[merged.length - 1].value += token.value;
+  const rawOps = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (tokensA[i] === tokensB[j]) {
+      rawOps.push({ type: 'equal', text: tokensA[i] });
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      rawOps.push({ type: 'delete', text: tokensA[i] });
+      i += 1;
     } else {
-      merged.push({ ...token });
+      rawOps.push({ type: 'insert', text: tokensB[j] });
+      j += 1;
     }
   }
+  while (i < m) {
+    rawOps.push({ type: 'delete', text: tokensA[i] });
+    i += 1;
+  }
+  while (j < n) {
+    rawOps.push({ type: 'insert', text: tokensB[j] });
+    j += 1;
+  }
 
+  // Coalesce adjacent operations of the same type
+  const merged = [];
+  for (const op of rawOps) {
+    if (merged.length > 0 && merged[merged.length - 1].type === op.type) {
+      merged[merged.length - 1].text += op.text;
+    } else {
+      merged.push({ ...op });
+    }
+  }
   return merged;
 }
 
-export default function DiffViewer({ 
-  originalText = '', 
-  modifiedText = '', 
-  titleOriginal = 'Original Prompt',
-  titleModified = 'Optimized Prompt',
-  showCopy = true,
-  initialMode = 'diff' 
+export default function DiffViewer({
+  originalText,
+  optimizedText,
+  title = 'Visual Diff',
+  copyLabel = 'Copy Optimized Prompt',
 }) {
-  const [viewMode, setViewMode] = useState(initialMode); // 'diff' | 'side-by-side'
   const [copyState, setCopyState] = useState('idle'); // 'idle' | 'copied' | 'failed'
+  const segments = useMemo(
+    () => computeWordDiff(originalText, optimizedText),
+    [originalText, optimizedText]
+  );
 
-  const diffItems = useMemo(() => {
-    return computeWordDiff(originalText, modifiedText);
-  }, [originalText, modifiedText]);
+  const canCopy = typeof optimizedText === 'string' && optimizedText.trim().length > 0;
 
   const handleCopy = async () => {
-    if (!modifiedText) return;
+    if (!canCopy) return;
     try {
-      await navigator.clipboard.writeText(modifiedText);
+      await navigator.clipboard.writeText(optimizedText);
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 2500);
     } catch {
@@ -98,109 +98,57 @@ export default function DiffViewer({
     }
   };
 
-  const hasModifications = originalText.trim() !== modifiedText.trim();
-
   return (
-    <div className="diff-viewer-component">
-      {/* View Switcher & Action Header */}
-      <div className="diff-toolbar">
-        <div className="diff-mode-toggles">
-          <button
-            type="button"
-            className={`diff-toggle-btn ${viewMode === 'diff' ? 'active' : ''}`}
-            onClick={() => setViewMode('diff')}
-          >
-            Visual Diff
-          </button>
-          <button
-            type="button"
-            className={`diff-toggle-btn ${viewMode === 'side-by-side' ? 'active' : ''}`}
-            onClick={() => setViewMode('side-by-side')}
-          >
-            Side-by-Side
-          </button>
-        </div>
-
-        <div className="diff-toolbar-actions">
+    <div className="diff-viewer-container">
+      <div className="box-header">
+        <div className="diff-title-group">
+          <h4>{title}</h4>
           <div className="diff-legend">
-            <span className="legend-item legend-deleted">
-              <span className="legend-swatch swatch-deleted" /> Removed bloat
+            <span className="legend-item">
+              <span className="legend-swatch swatch-deleted" /> Removed
             </span>
-            <span className="legend-item legend-preserved">
-              <span className="legend-swatch swatch-preserved" /> Preserved text
+            <span className="legend-item">
+              <span className="legend-swatch swatch-added" /> Updated
             </span>
           </div>
-
-          {showCopy && modifiedText && (
-            <button
-              type="button"
-              className="btn-copy btn-copy-prominent"
-              onClick={handleCopy}
-              disabled={copyState === 'copied'}
-            >
-              {copyState === 'copied' && '✓ Copied to clipboard!'}
-              {copyState === 'failed' && '✗ Copy failed'}
-              {copyState === 'idle' && 'Copy Optimized Prompt'}
-            </button>
-          )}
         </div>
+        {canCopy && (
+          <button
+            type="button"
+            className="btn-copy"
+            onClick={handleCopy}
+            disabled={copyState === 'copied'}
+          >
+            {copyState === 'copied' && '✓ Copied!'}
+            {copyState === 'failed' && '✗ Copy failed'}
+            {copyState === 'idle' && copyLabel}
+          </button>
+        )}
       </div>
 
-      {/* Visual Diff (Unified with Red Strikethrough) */}
-      {viewMode === 'diff' && (
-        <div className="diff-content diff-unified-container">
-          <div className="diff-header-bar">
-            <span className="diff-label">Highlighted Prompt Diff</span>
-            {!hasModifications && (
-              <span className="diff-notice">No differences detected (Prompt is already lean)</span>
-            )}
-          </div>
-          <pre className="diff-unified-box">
-            {diffItems.map((item, idx) => {
-              if (item.type === 'delete') {
-                return (
-                  <del key={idx} className="diff-deleted" title="Removed waste / bloat">
-                    {item.value}
-                  </del>
-                );
-              }
-              if (item.type === 'insert') {
-                return (
-                  <ins key={idx} className="diff-added" title="Added / reformatted">
-                    {item.value}
-                  </ins>
-                );
-              }
-              return <span key={idx} className="diff-equal">{item.value}</span>;
-            })}
-          </pre>
-        </div>
-      )}
-
-      {/* Side-by-Side View */}
-      {viewMode === 'side-by-side' && (
-        <div className="side-by-side diff-split-container">
-          <div className="prompt-box-wrapper">
-            <div className="box-header">
-              <h4>{titleOriginal}</h4>
-              <span className="box-token-count">{originalText.length} chars</span>
-            </div>
-            <pre className="prompt-box original-box">
-              {originalText || '—'}
-            </pre>
-          </div>
-
-          <div className="prompt-box-wrapper">
-            <div className="box-header">
-              <h4>{titleModified}</h4>
-              <span className="box-token-count">{modifiedText.length} chars</span>
-            </div>
-            <pre className="prompt-box rewrite-box">
-              {modifiedText || '—'}
-            </pre>
-          </div>
-        </div>
-      )}
+      <div className="prompt-box diff-box" aria-label="Prompt visual diff">
+        {segments.map((seg, idx) => {
+          if (seg.type === 'delete') {
+            return (
+              <del key={idx} className="diff-deleted">
+                {seg.text}
+              </del>
+            );
+          }
+          if (seg.type === 'insert') {
+            return (
+              <ins key={idx} className="diff-added">
+                {seg.text}
+              </ins>
+            );
+          }
+          return (
+            <span key={idx} className="diff-equal">
+              {seg.text}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

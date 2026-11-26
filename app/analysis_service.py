@@ -203,3 +203,62 @@ def run_analysis(
         "semantic_check_ran": semantic_check_ran,
         "duration_ms": duration_ms,
     }
+
+
+def analyze_single_request(
+    db: Session,
+    req: RequestLog,
+    embedder: Optional[Embedder] = None,
+    auto_suggest: bool = True,
+) -> List[PromptFlag]:
+    """
+    Analyzes a single logged RequestLog immediately on ingest and optionally
+    auto-generates Tier 1 suggestions for any detected flags.
+    """
+    if not req or not req.prompt_text or not req.prompt_text.strip():
+        return []
+    if req.status_code is None or req.status_code < 200 or req.status_code >= 300:
+        return []
+
+    # Idempotent cleanup if re-invoked for the same request
+    db.query(Suggestion).filter(Suggestion.request_id == req.id).delete(synchronize_session="fetch")
+    db.query(PromptFlag).filter(PromptFlag.request_id == req.id).delete(synchronize_session="fetch")
+    db.query(PromptAnalysis).filter(PromptAnalysis.request_id == req.id).delete(synchronize_session="fetch")
+
+    tokens = req.input_tokens or req.total_tokens
+    flags_data, _ = analyze_prompt(req.prompt_text, tokens, embedder=embedder)
+
+    created_flags: List[PromptFlag] = []
+    for fd in flags_data:
+        flag = PromptFlag(
+            request_id=req.id,
+            flag_type=fd["flag_type"],
+            severity=fd["severity"],
+            detail=fd["detail"],
+            analyzer_version=fd["analyzer_version"],
+            created_at=utc_now(),
+        )
+        created_flags.append(flag)
+
+    if created_flags:
+        db.add_all(created_flags)
+
+    db.add(
+        PromptAnalysis(
+            request_id=req.id,
+            analyzed_at=utc_now(),
+            analyzer_version=ANALYZER_VERSION,
+            flag_count=len(created_flags),
+        )
+    )
+    db.commit()
+
+    if auto_suggest and created_flags:
+        from .suggestion_service import get_or_create_suggestion
+
+        for flag in created_flags:
+            db.refresh(flag)
+            if flag.flag_type in ("redundant_sentences", "repeated_content"):
+                get_or_create_suggestion(db, flag_id=flag.id)
+
+    return created_flags

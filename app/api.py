@@ -20,8 +20,11 @@ from .schemas import (
     SuggestionItem,
     SuggestionList,
     SuggestionsSummary,
+    AuditPromptRequest,
+    AuditPromptResponse,
 )
 from .analysis_service import run_analysis
+from .prompt_optimizer import optimize_prompt_text
 from .suggestion_service import get_or_create_suggestion
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -122,6 +125,7 @@ def get_flags(
     flag_type: Optional[str] = None,
     severity: Optional[str] = None,
     provider: Optional[str] = None,
+    request_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -135,6 +139,8 @@ def get_flags(
         query = query.filter(PromptFlag.severity == severity)
     if provider:
         query = query.filter(RequestLog.provider == provider)
+    if request_id is not None:
+        query = query.filter(PromptFlag.request_id == request_id)
 
     total = query.count()
     rows = query.order_by(PromptFlag.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
@@ -302,5 +308,21 @@ def get_suggestions_summary(db: Session = Depends(get_db)):
         verified_llm_savings=int(verified_llm_savings),
         total_estimated_token_savings=int(total_savings),
         optimizer_total_cost_usd=round(float(optimizer_total_cost_usd), 4),
+    )
+
+
+# ==================== Real-Time Pre-Flight Optimizer ====================
+
+@router.post("/audit-prompt", response_model=AuditPromptResponse)
+def audit_prompt_endpoint(payload: AuditPromptRequest):
+    """
+    Real-time pre-flight prompt optimizer endpoint.
+    Strips conversational fluff, duplicate sentences, repeated formatting,
+    and optionally runs Tier 2 LLM rewrite when ENABLE_LLM_REWRITE=true.
+    """
+    return optimize_prompt_text(
+        prompt_text=payload.prompt_text,
+        provider=payload.provider,
+        model=payload.model,
     )
 

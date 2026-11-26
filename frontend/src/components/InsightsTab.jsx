@@ -146,13 +146,12 @@ export default function InsightsTab() {
         </div>
 
         <div className="insights-header-actions">
-          <button 
-            type="button" 
-            className="btn btn-secondary btn-export-report"
+          <button
+            type="button"
+            className="btn btn-export-report"
             onClick={() => setShowExportModal(true)}
-            title="Export audit report as CSV or printable PDF"
           >
-            📥 Export Report
+            Export Report
           </button>
 
           <div className="run-analysis-container">
@@ -230,12 +229,11 @@ export default function InsightsTab() {
         />
       )}
 
-      {/* 4. Export Report Modal */}
       {showExportModal && (
         <ExportModal
+          filters={filters}
+          totalFlags={flagsData?.total ?? flagsSummary?.total_flags ?? 0}
           onClose={() => setShowExportModal(false)}
-          flagsSummary={flagsSummary}
-          suggestionsSummary={suggestionsSummary}
         />
       )}
     </div>
