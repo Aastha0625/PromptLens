@@ -1,11 +1,11 @@
 import React from 'react';
-import { formatNumber, formatCost } from '../format';
+import { formatNumber } from '../format';
 
 export default function InsightsSummary({ flagsSummary, suggestionsSummary, loading }) {
   if (loading) {
     return (
-      <div className="summary-grid">
-        {[1, 2, 3, 4, 5, 6].map(i => (
+      <div className="summary-grid insights-grid-simple">
+        {[1, 2, 3, 4].map((i) => (
           <div key={i} className="card card-skeleton">
             <div className="skeleton-line" />
             <div className="skeleton-title" />
@@ -20,75 +20,44 @@ export default function InsightsSummary({ flagsSummary, suggestionsSummary, load
 
   const analyzedCount = fSum.analyzed_requests ?? 0;
   const flaggedCount = fSum.flagged_requests ?? 0;
-  const totalFlags = fSum.total_flags ?? 0;
+  const totalWasted = fSum.total_estimated_wasted_tokens ?? 0;
+  const totalSavings = sSum.total_estimated_token_savings ?? 0;
   const bySev = fSum.by_severity || {};
 
-  const totalWasted = fSum.total_estimated_wasted_tokens ?? 0;
-
-  const totalSuggestions = sSum.total_suggestions ?? 0;
-  const usableCount = (sSum.verified_count ?? 0) + (sSum.by_status?.ok ? (sSum.by_status.ok - (sSum.verified_count ?? 0)) : 0);
-  
-  const ruleSavings = sSum.rule_based_savings ?? 0;
-  const llmSavings = sSum.verified_llm_savings ?? 0;
-
-  const toolCost = sSum.optimizer_total_cost_usd ?? 0.0;
-
   return (
-    <div className="summary-grid insights-grid">
-      {/* 1. Flagged Requests */}
-      <div className="card stat-card">
-        <span className="card-label">Flagged Requests</span>
-        <div className="card-value">{formatNumber(flaggedCount)}</div>
-        <span className="card-subtext">of {formatNumber(analyzedCount)} analyzed</span>
+    <div className="summary-grid insights-grid-simple">
+      {/* 1. Audited Requests */}
+      <div className="card stat-card-simple">
+        <span className="card-label">Requests Intercepted & Audited</span>
+        <div className="card-value">{formatNumber(analyzedCount)}</div>
+        <span className="card-subtext">live calls routed through proxy</span>
       </div>
 
-      {/* 2. Total Flags with Severity Breakdown */}
-      <div className="card stat-card">
-        <span className="card-label">Total Flags</span>
-        <div className="card-value">{formatNumber(totalFlags)}</div>
+      {/* 2. Flagged Inefficiencies */}
+      <div className="card stat-card-simple">
+        <span className="card-label">Prompts with Detected Waste</span>
+        <div className="card-value text-danger">{formatNumber(flaggedCount)}</div>
         <span className="card-subtext severity-breakdown">
-          <span className="sev-item text-danger">H: {bySev.high ?? 0}</span>
-          <span className="sev-divider">|</span>
-          <span className="sev-item text-warning">M: {bySev.medium ?? 0}</span>
-          <span className="sev-divider">|</span>
-          <span className="sev-item text-primary">L: {bySev.low ?? 0}</span>
+          <span className="sev-item text-danger">High: {bySev.high ?? 0}</span>
+          <span className="sev-divider">•</span>
+          <span className="sev-item text-warning">Med: {bySev.medium ?? 0}</span>
+          <span className="sev-divider">•</span>
+          <span className="sev-item text-primary">Low: {bySev.low ?? 0}</span>
         </span>
       </div>
 
-      {/* 3. Estimated Wasted Tokens */}
-      <div className="card stat-card">
-        <span className="card-label">Estimated Wasted Tokens</span>
+      {/* 3. Wasted Tokens */}
+      <div className="card stat-card-simple">
+        <span className="card-label">Wasted Prompt Tokens</span>
         <div className="card-value text-danger">{formatNumber(totalWasted)}</div>
-        <span className="card-subtext">estimated across all flags</span>
+        <span className="card-subtext">lost to fluff, duplicates & loops</span>
       </div>
 
-      {/* 4. Suggestions Generated */}
-      <div className="card stat-card">
-        <span className="card-label">Suggestions Generated</span>
-        <div className="card-value">{formatNumber(totalSuggestions)}</div>
-        <span className="card-subtext">{formatNumber(usableCount)} usable suggestions</span>
-      </div>
-
-      {/* 5. Estimated Savings (Two separate lines, never combined) */}
-      <div className="card stat-card">
-        <span className="card-label">Estimated Savings</span>
-        <div className="savings-lines">
-          <div className="savings-line">
-            <span className="line-label">rule-based (not model-checked):</span>
-            <strong className="line-val text-success">{formatNumber(ruleSavings)}</strong>
-          </div>
-          <div className="savings-line">
-            <span className="line-label">LLM, verified:</span>
-            <strong className="line-val text-success">{formatNumber(llmSavings)}</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. Tool Overhead */}
-      <div className="card stat-card">
-        <span className="card-label">Tool Overhead</span>
-        <div className="card-value">{formatCost(toolCost)}</div>
-        <span className="card-subtext">what PromptLens itself spent</span>
+      {/* 4. Optimized Savings */}
+      <div className="card stat-card-simple">
+        <span className="card-label">Potential Token Savings</span>
+        <div className="card-value text-success">{formatNumber(totalSavings)}</div>
+        <span className="card-subtext">recoverable using clean rewrites</span>
       </div>
     </div>
   );

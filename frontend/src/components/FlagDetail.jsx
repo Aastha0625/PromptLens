@@ -9,7 +9,6 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
 
-  // Ref tracking current flag id to discard POST response if flag changed
   const currentFlagIdRef = useRef(flag.id);
   currentFlagIdRef.current = flag.id;
 
@@ -28,8 +27,8 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
     setRequestData({ data: null, loading: true, error: null });
 
     fetchRequestDetail(flag.request_id, controller.signal)
-      .then(data => setRequestData({ data, loading: false, error: null }))
-      .catch(err => {
+      .then((data) => setRequestData({ data, loading: false, error: null }))
+      .catch((err) => {
         if (err.name === 'AbortError') return;
         setRequestData({ data: null, loading: false, error: err.message });
       });
@@ -43,11 +42,11 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
     setSuggestionData({ data: null, loading: true, error: null });
 
     fetchSuggestions({ flag_id: flag.id }, controller.signal)
-      .then(res => {
+      .then((res) => {
         const existing = res.items && res.items.length > 0 ? res.items[0] : null;
         setSuggestionData({ data: existing, loading: false, error: null });
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.name === 'AbortError') return;
         setSuggestionData({ data: null, loading: false, error: err.message });
       });
@@ -65,11 +64,12 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
       if (status === 'disabled' || status === 'failed') {
         regenerate = false;
       } else if (method === 'llm_rewrite' && (status === 'ok' || status === 'not_verified_safe')) {
-        const confirmed = window.confirm("Regenerating will call the optimizer model again and consume API quota. Continue?");
+        const confirmed = window.confirm(
+          'Regenerating will call the optimizer model again and consume API quota. Continue?'
+        );
         if (!confirmed) return;
         regenerate = true;
       } else {
-        // rule_based or no_change
         regenerate = true;
       }
     }
@@ -80,7 +80,6 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
     const targetFlagId = flag.id;
 
     try {
-      // POST is NOT aborted to ensure server batching completes
       const newSug = await triggerSuggestion(targetFlagId, regenerate);
       if (currentFlagIdRef.current === targetFlagId) {
         setSuggestionData({ data: newSug, loading: false, error: null });
@@ -99,80 +98,126 @@ export default function FlagDetail({ flag, onClose, onSuggestionGenerated }) {
     }
   };
 
-  // Determine button label
-  let buttonLabel = "Generate suggestion";
-  if (suggestionData.data) {
-    const { status, method } = suggestionData.data;
-    if (status === 'failed') {
-      buttonLabel = "Retry";
-    } else if (status === 'disabled') {
-      buttonLabel = "Generate";
+  const currentSug = suggestionData.data;
+  let buttonLabel = 'Generate Suggestion';
+  if (currentSug) {
+    if (currentSug.status === 'disabled' || currentSug.status === 'failed') {
+      buttonLabel = 'Retry Optimization';
     } else {
-      buttonLabel = "Regenerate";
+      buttonLabel = 'Regenerate Rewrite';
     }
   }
 
   const sevColor = SEVERITY_COLORS[flag.severity] || SEVERITY_COLORS.low;
-  const originalPromptText = requestData.data?.prompt_text || flag.prompt_preview || "";
+  const originalPromptText = requestData.data?.prompt_text || flag.prompt_preview || '';
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="header-tags">
-            <span 
-              className="badge" 
-              style={{ backgroundColor: sevColor.bg, color: sevColor.text, borderColor: sevColor.border }}
+            <span
+              className="badge"
+              style={{
+                backgroundColor: sevColor.bg,
+                color: sevColor.text,
+                borderColor: sevColor.border,
+              }}
             >
               {flag.severity.toUpperCase()}
             </span>
             <h3>{FLAG_TYPE_LABELS[flag.flag_type] || flag.flag_type}</h3>
+            <span className="api-chip" style={{ marginLeft: '6px' }}>
+              Req #{flag.request_id} • {flag.provider} / {flag.model}
+            </span>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>&times;</button>
+          <button
+            type="button"
+            className="close-btn"
+            onClick={onClose}
+            aria-label="Close"
+            title="Close (Esc)"
+          >
+            &times;
+          </button>
         </div>
 
         <div className="modal-content">
           {/* Explanation Banner */}
           <div className="detail-explanation-card">
-            <h4>Why this was flagged</h4>
+            <h4>Audit Diagnosis</h4>
             <p>{getPlainEnglishFlagExplanation(flag)}</p>
           </div>
 
-          {/* Action Row */}
-          <div className="suggestion-action-row">
-            <div>
-              <h4>Prompt Shortening & Optimization</h4>
-              <p className="text-muted-sm">
-                {flag.flag_type === 'verbose_for_template' 
-                  ? "Uses the configured optimizer model to safely shorten the prompt." 
-                  : "Uses deterministic rules to remove duplicate sentences and formatting bloat."}
-              </p>
-            </div>
-            <button 
-              type="button" 
-              className="btn btn-primary"
-              onClick={handleAction}
-              disabled={actionLoading || suggestionData.loading}
-            >
-              {actionLoading ? "Processing..." : buttonLabel}
-            </button>
-          </div>
-
           {actionError && (
-            <div className="state-box error-box">
+            <div className="state-box error-box" style={{ marginBottom: '14px' }}>
               <p>Failed to generate suggestion: {actionError}</p>
             </div>
           )}
 
           {/* Suggestion view if available */}
           {suggestionData.loading ? (
-            <div className="state-box">Loading suggestion status...</div>
-          ) : (
-            <SuggestionView 
-              suggestion={suggestionData.data} 
-              originalPromptText={originalPromptText} 
+            <div className="state-box">Loading clean rewrite...</div>
+          ) : suggestionData.data ? (
+            <SuggestionView
+              suggestion={suggestionData.data}
+              originalPromptText={originalPromptText}
             />
+          ) : (
+            <div className="suggestion-action-row" style={{ marginTop: '14px' }}>
+              <div>
+                <h4>No rewrite generated yet</h4>
+                <p className="text-muted-sm">
+                  Click generate to produce an optimized, lean prompt recommendation.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary-sm"
+                  onClick={onClose}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAction}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Optimizing...' : buttonLabel}
+                </button>
+              </div>
+            </div>
           )}
+        </div>
+
+        {/* Pinned Modal Footer */}
+        <div className="detail-modal-footer">
+          <span className="text-muted-sm">
+            {suggestionData.data
+              ? 'Cleaned by PromptLens optimizer engine.'
+              : 'PromptLens Bloat Auditor'}
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary-sm"
+              onClick={onClose}
+            >
+              Close
+            </button>
+            {suggestionData.data && (
+              <button
+                type="button"
+                className="btn btn-secondary-sm"
+                onClick={handleAction}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Working...' : buttonLabel}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

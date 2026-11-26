@@ -24,16 +24,20 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(api_router)
 
 @app.post("/proxy/{provider}")
-async def proxy(provider: str, request: Request, background_tasks: BackgroundTasks):
+@app.post("/proxy/{provider}/{subpath:path}")
+async def proxy(provider: str, request: Request, background_tasks: BackgroundTasks, subpath: str = ""):
     if provider not in providers:
         raise HTTPException(status_code=404, detail="Unknown provider")
         

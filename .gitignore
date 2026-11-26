@@ -17,6 +17,9 @@ promptlens.db-wal
 *.db-shm
 *.db-wal
 *.sqlite3
+*.db
+*.db-shm
+*.db-wal
 
 # OS generated files
 .DS_Store
