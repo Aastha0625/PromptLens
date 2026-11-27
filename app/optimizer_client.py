@@ -88,6 +88,8 @@ class OptimizerClient:
         }
         if self.provider == "anthropic":
             body["max_tokens"] = 1024
+        elif self.provider == "ollama":
+            body["stream"] = False
 
         start_time = time.time()
         with httpx.Client(timeout=self.timeout) as client:
